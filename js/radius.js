@@ -254,12 +254,24 @@ Layer.prototype = {
                 ms = 50;
             }
 
+            // Update entities
             // TODO: Need to lock the list of children
-            this.forEachEntity(function (entity) {
-                if (entity.update) {
-                    entity.update(ms);
+            var childCount = this.entities.length;
+            for (var i = 0; i < childCount; i++) {
+                var child = this.entities[i];
+                if (child.update) {
+                    child.update(ms);
                 }
-            });
+
+                // Check to see if this child should be removed
+                if (child.dead) {
+                    this.removeEntity(child);
+
+                    // Update loop variables to account for the removed child
+                    childCount--;
+                    i--;
+                }
+            }
         }
 
         this.lastUpdate = now;
