@@ -85,8 +85,8 @@ Player.prototype.reset = function () {
 // TODO: Keyboard/touch controls
 Player.prototype.setPosition = function (x, y) {
     // TODO: It seems like the bounds would be better controlled in the layer...
-    this.x = (x < -Player.boundX ? -Player.boundX : (x > Player.boundX ? Player.boundX : x));
-    this.y = (y < -Player.boundY ? -Player.boundY : (y > Player.boundY ? Player.boundY : y));
+    this.x = Math.max(-Player.boundX, Math.min(Player.boundX, x));
+    this.y = Math.max(-Player.boundY, Math.min(Player.boundY, y));
 };
 
 Player.prototype.setFiring = function (firing) {
