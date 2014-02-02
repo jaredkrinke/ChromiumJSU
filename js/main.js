@@ -103,6 +103,36 @@ Player.prototype.update = function (ms) {
     }
 };
 
+function Enemy(x, y, width, height, speed) {
+    Entity.call(this, x, y, width, height);
+    // TODO: It seems like bounds should be based on size...
+    this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
+    this.speed = speed;
+}
+
+Enemy.boundX = 256;
+Enemy.prototype = Object.create(Entity.prototype);
+
+Enemy.prototype.update = function (ms) {
+    // TODO: Secondary moves
+    this.y -= this.speed * ms;
+    // TODO: Handle bounds in the layer
+    // TODO: Bounds should take height into account, right?
+    if (this.y < -240) {
+        // TODO: Going past the player should actually cause the player to lose a life!
+        this.dead = true;
+    }
+    // TODO: Shooting
+};
+
+function Straight(x, y) {
+    //	vel[1] = -0.046-frand*0.04; -- What's "frand"? Fixed random number? Actual random number?
+    Enemy.call(this, x, y, 43, 58, 0.065);
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'gray')];
+}
+
+Straight.prototype = Object.create(Enemy.prototype);
+
 function GameLayer() {
     Layer.call(this);
     this.player = this.addEntity(new Player(this));
