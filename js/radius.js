@@ -1,6 +1,81 @@
-﻿function Event() {
+﻿function LockingList() {
+    // TODO: Should "locked" be a counter instead?
+    this.locked = false;
+    this.items = [];
+    this.pendingActions = [];
+}
+
+LockingList.action = {
+    append: 0,
+    remove: 1
+};
+
+// TODO: Consider making the internal versions hidden
+LockingList.prototype.appendInternal = function (item) {
+    this.items.push(item);
+};
+
+LockingList.prototype.append = function (item) {
+    if (this.locked) {
+        this.pendingActions.push({ type: LockingList.action.append, item: item });
+    } else {
+        this.appendInternal(item);
+    }
+};
+
+LockingList.prototype.removeInternal = function (item) {
+    var index = this.items.indexOf(item);
+    if (index >= 0) {
+        this.items.splice(index, 1);
+    }
+};
+
+LockingList.prototype.remove = function (item) {
+    if (this.locked) {
+        this.pendingActions.push({ type: LockingList.action.remove, item: item });
+    } else {
+        this.removeInternal(item);
+    }
+};
+
+LockingList.prototype.lock = function () {
+    this.locked = true;
+};
+
+LockingList.prototype.unlock = function () {
+    if (this.locked) {
+        // Process any queued actions on unlock
+        var count = this.pendingActions.length;
+        for (var i = 0; i < count; i++) {
+            var action = this.pendingActions[i];
+            switch (action.type) {
+                case LockingList.action.append:
+                    this.appendInternal(action.item);
+                    break;
+
+                case LockingList.action.remove:
+                    this.removeInternal(action.item);
+                    break;
+            }
+        }
+        this.pendingActions.length = 0;
+    }
+
+    this.locked = false;
+};
+
+LockingList.prototype.forEach = function (callback, that) {
+    this.lock();
+    var count = this.items.length;
+    for (var i = 0; i < count; i++) {
+        callback.call(that, this.items[i]);
+    }
+    this.unlock();
+};
+
+function Event() {
     this.callbacks = [];
-    // TODO: Consider refactoring this "lockable list" and using it for entities in Layer
+    // TODO: Use LockingList here
     this.locked = false;
 }
 
@@ -214,34 +289,23 @@ var keyCodeToName = {
 
 // Layer that contains entities to display/update
 function Layer() {
-    this.entities = [];
+    this.entities = new LockingList();
 }
 
 Layer.prototype = {
     constructor: Layer,
 
     addEntity: function (entity) {
-        this.entities.push(entity);
+        this.entities.append(entity);
         return entity;
     },
 
     removeEntity: function (entity) {
-        var entities = this.entities;
-        var entityCount = entities.length;
-        for (var i = 0; i < entityCount; i++) {
-            if (entities[i] === entity) {
-                entities.splice(i, 1);
-                break;
-            }
-        }
+        this.entities.remove(entity);
     },
 
     forEachEntity: function (f) {
-        var entities = this.entities;
-        var entityCount = entities.length;
-        for (var i = 0; i < entityCount; i++) {
-            f(entities[i]);
-        }
+        this.entities.forEach(f);
     },
 
     update: function () {
@@ -255,10 +319,7 @@ Layer.prototype = {
             }
 
             // Update entities
-            // TODO: Need to lock the list of children
-            var childCount = this.entities.length;
-            for (var i = 0; i < childCount; i++) {
-                var child = this.entities[i];
+            this.entities.forEach(function (child) {
                 if (child.update) {
                     child.update(ms);
                 }
@@ -266,12 +327,8 @@ Layer.prototype = {
                 // Check to see if this child should be removed
                 if (child.dead) {
                     this.removeEntity(child);
-
-                    // Update loop variables to account for the removed child
-                    childCount--;
-                    i--;
                 }
-            }
+            });
         }
 
         this.lastUpdate = now;

@@ -13,12 +13,6 @@ Shot.prototype = Object.create(Entity.prototype);
 
 Shot.prototype.update = function (ms) {
     this.y += this.speed * ms;
-
-    // Check boundaries
-    // TODO: Should bounds be done in the layer? (That would remove the layer dependency...)
-    if (this.y > 284) {
-        this.dead = true;
-    }
 };
 
 function Bullet(x, y) {
@@ -103,11 +97,12 @@ Player.prototype.update = function (ms) {
     }
 };
 
-function Enemy(x, y, width, height, speed) {
+function Enemy(x, y, width, height, speed, health) {
     Entity.call(this, x, y, width, height);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
+    this.health = health;
 }
 
 Enemy.boundX = 256;
@@ -116,19 +111,13 @@ Enemy.prototype = Object.create(Entity.prototype);
 Enemy.prototype.update = function (ms) {
     // TODO: Secondary moves
     this.y -= this.speed * ms;
-    // TODO: Handle bounds in the layer
-    // TODO: Bounds should take height into account, right?
-    if (this.y < -284) {
-        // TODO: Going past the player should actually cause the player to lose a life!
-        this.dead = true;
-    }
     // TODO: Shooting
 };
 
 // TODO: Random factor?
 function Straight(x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, x, y, 43, 58, 0.065);
+    Enemy.call(this, x, y, 43, 58, 0.065, 110);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'gray')];
 }
 
@@ -263,13 +252,13 @@ function GameLayer() {
     this.reset();
 }
 
+GameLayer.boundY = 284;
 GameLayer.prototype = Object.create(Layer.prototype);
 
 GameLayer.prototype.reset = function () {
     this.player.reset();
-    this.playerShots.length = 0;
-    this.enemies.length = 0;
-    // TODO: Remove player shots, enemies from the entity list
+    this.clearPlayerShots();
+    this.clearEnemies();
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
 };
@@ -278,8 +267,36 @@ GameLayer.prototype.addPlayerShot = function (shot) {
     this.playerShots.push(this.addEntity(shot));
 };
 
+GameLayer.prototype.removePlayerShot = function (shot) {
+    var index = this.playerShots.indexOf(shot);
+    if (index >= 0) {
+        this.removeEntity(this.playerShots[index]);
+        this.playerShots.splice(index, 1);
+    }
+};
+
+GameLayer.prototype.clearPlayerShots = function () {
+    while (this.playerShots.length > 0) {
+        this.removePlayerShot(this.playerShots[0]);
+    }
+};
+
 GameLayer.prototype.addEnemy = function (enemy) {
     this.enemies.push(this.addEntity(enemy));
+};
+
+GameLayer.prototype.removeEnemy = function (enemy) {
+    var index = this.enemies.indexOf(enemy);
+    if (index >= 0) {
+        this.removeEntity(this.enemies[index]);
+        this.enemies.splice(index, 1);
+    }
+};
+
+GameLayer.prototype.clearEnemies = function () {
+    while (this.enemies.length > 0) {
+        this.removePlayerShot(this.enemies[0]);
+    }
 };
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
@@ -293,7 +310,66 @@ GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
     }
 };
 
+GameLayer.prototype.checkShotCollision = function (shot, b) {
+    var bw = b.width / 2;
+    var bh = b.height / 2;
+    return (shot.x >= b.x - bw)
+        && (shot.x <= b.x + bw)
+        && (shot.y >= b.y - bh)
+        && (shot.y <= b.y + bh);
+};
+
 GameLayer.prototype.updateGame = function (ms) {
+    // Check bounds and collisions for shots
+    var count = this.playerShots.length;
+    for (var i = 0; i < count; i++) {
+        var shot = this.playerShots[i];
+        var remove = false;
+
+        if (shot.y > GameLayer.boundY) {
+            // Out of bounds
+            remove = true;
+        } else {
+            // Check collisions
+            var enemyCount = this.enemies.length;
+            for (var j = 0; j < enemyCount; j++) {
+                var enemy = this.enemies[j];
+                if (this.checkShotCollision(shot, enemy)) {
+                    enemy.health -= shot.damage;
+                    remove = true;
+                }
+            }
+        }
+
+        if (remove) {
+            this.removePlayerShot(shot);
+            i--;
+            count--;
+        }
+    }
+
+    // Check bounds and health for enemies
+    count = this.enemies.length;
+    for (i = 0; i < count; i++) {
+        var enemy = this.enemies[i];
+        var remove = false;
+        if (enemy.y < -GameLayer.boundY) {
+            // Out of bounds
+            remove = true;
+        } else if (enemy.health <= 0) {
+            // Destroyed
+            // TODO: Explosion
+            remove = true;
+        }
+
+        if (remove) {
+            this.removeEnemy(enemy);
+            i--;
+            count--;
+        }
+    }
+
+    // Add new enemies according to the level
     if (this.level) {
         this.level.update(ms);
     }
