@@ -21,12 +21,19 @@ function Bullet(x, y) {
 
 Bullet.prototype = Object.create(Shot.prototype);
 
-function Gun(layer, host, x, y, period, shot) {
+function StraightShot(x, y) {
+    Shot.call(this, x, y, 7, 16, -0.28, 75);
+}
+
+StraightShot.prototype = Object.create(Shot.prototype);
+
+function Gun(layer, host, x, y, period, periodRandomMax, shot) {
     this.layer = layer;
     this.host = host;
     this.x = x;
     this.y = y;
     this.period = period;
+    this.periodRandomMax = periodRandomMax;
     this.shot = shot;
     this.reset();
 }
@@ -45,11 +52,23 @@ Gun.prototype.setFiring = function (firing) {
     }
 };
 
+Gun.prototype.reload = function () {
+    this.timer += this.period + this.periodRandomMax * Math.random();
+};
+
 Gun.prototype.update = function (ms) {
     this.timer -= ms;
     if (this.firing && this.timer <= 0) {
-        this.layer.addPlayerShot(new this.shot(this.host.x + this.x, this.host.y + this.y));
-        this.timer += this.period;
+        var shot = new this.shot(this.host.x + this.x, this.host.y + this.y);
+
+        // Add the appropriate kind of shot
+        if (this.host instanceof Player) {
+            this.layer.addPlayerShot(shot);
+        } else {
+            this.layer.addEnemyShot(shot);
+        }
+
+        this.reload();
     }
 };
 
@@ -59,10 +78,11 @@ function Player(layer) {
     this.width = 40;
     this.height = 48;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
+    this.health = 500;
     this.guns = [
-        new Gun(layer, this, 13, 6, 100, Bullet),
-        new Gun(layer, this, -13, 6, 100, Bullet)
-];
+        new Gun(layer, this, 13, 6, 100, 0, Bullet),
+        new Gun(layer, this, -13, 6, 100, 0, Bullet)
+    ];
 }
 
 Player.prototype = Object.create(Entity.prototype);
@@ -97,12 +117,21 @@ Player.prototype.update = function (ms) {
     }
 };
 
-function Enemy(x, y, width, height, speed, health) {
+function Enemy(layer, x, y, width, height, speed, health, guns) {
     Entity.call(this, x, y, width, height);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
+    this.layer = layer;
     this.speed = speed;
     this.health = health;
+    this.guns = guns;
+
+    var count = guns.length;
+    for (var i = 0; i < count; i++) {
+        var gun = guns[i];
+        gun.reload();
+        gun.setFiring(true);
+    }
 }
 
 Enemy.boundX = 256;
@@ -111,13 +140,20 @@ Enemy.prototype = Object.create(Entity.prototype);
 Enemy.prototype.update = function (ms) {
     // TODO: Secondary moves
     this.y -= this.speed * ms;
-    // TODO: Shooting
+
+    // Shooting
+    if (this.guns) {
+        var count = this.guns.length;
+        for (var i = 0; i < count; i++) {
+            this.guns[i].update(ms);
+        }
+    }
 };
 
 // TODO: Random factor?
-function Straight(x, y) {
+function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, x, y, 43, 58, 0.065, 110);
+    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110, [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot)]);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'gray')];
 }
 
@@ -226,7 +262,7 @@ Level.prototype.update = function (ms) {
         action = this.queue.remove();
         switch (action.type) {
             case Wave.Type.straight:
-                this.layer.addEnemy(new Straight(action.x, action.y));
+                this.layer.addEnemy(new Straight(this.layer, action.x, action.y));
                 break;
         }
     }
@@ -249,6 +285,7 @@ function GameLayer() {
     this.player = this.addEntity(new Player(this));
     this.playerShots = [];
     this.enemies = [];
+    this.enemyShots = [];
     this.reset();
 }
 
@@ -259,6 +296,7 @@ GameLayer.prototype.reset = function () {
     this.player.reset();
     this.clearPlayerShots();
     this.clearEnemies();
+    this.clearEnemyShots();
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
 };
@@ -295,7 +333,25 @@ GameLayer.prototype.removeEnemy = function (enemy) {
 
 GameLayer.prototype.clearEnemies = function () {
     while (this.enemies.length > 0) {
-        this.removePlayerShot(this.enemies[0]);
+        this.removeEnemy(this.enemies[0]);
+    }
+};
+
+GameLayer.prototype.addEnemyShot = function (shot) {
+    this.enemyShots.push(this.addEntity(shot));
+};
+
+GameLayer.prototype.removeEnemyShot = function (shot) {
+    var index = this.enemyShots.indexOf(shot);
+    if (index >= 0) {
+        this.removeEntity(this.enemyShots[index]);
+        this.enemyShots.splice(index, 1);
+    }
+};
+
+GameLayer.prototype.clearEnemyShots = function () {
+    while (this.enemyShots.length > 0) {
+        this.removeenemyShot(this.enemyShots[0]);
     }
 };
 
@@ -320,7 +376,7 @@ GameLayer.prototype.checkShotCollision = function (shot, b) {
 };
 
 GameLayer.prototype.updateGame = function (ms) {
-    // Check bounds and collisions for shots
+    // Check bounds and collisions for player shots
     var count = this.playerShots.length;
     for (var i = 0; i < count; i++) {
         var shot = this.playerShots[i];
@@ -348,6 +404,32 @@ GameLayer.prototype.updateGame = function (ms) {
         }
     }
 
+    // Check bounds and collisions for enemy shots
+    count = this.enemyShots.length;
+    for (i = 0; i < count; i++) {
+        var shot = this.enemyShots[i];
+        var remove = false;
+
+        if (shot.y < -GameLayer.boundY) {
+            remove = true;
+        } else {
+            // Check collisions
+            if (this.checkShotCollision(shot, this.player)) {
+                // TODO: Check for loss
+                // TODO: Explosion
+                // TODO: Shields
+                this.player.health -= shot.damage;
+                remove = true;
+            }
+        }
+
+        if (remove) {
+            this.removeEnemyShot(shot);
+            i--;
+            count--;
+        }
+    }
+
     // Check bounds and health for enemies
     count = this.enemies.length;
     for (i = 0; i < count; i++) {
@@ -355,6 +437,7 @@ GameLayer.prototype.updateGame = function (ms) {
         var remove = false;
         if (enemy.y < -GameLayer.boundY) {
             // Out of bounds
+            // TODO: This should cause the player to lose a life
             remove = true;
         } else if (enemy.health <= 0) {
             // Destroyed
@@ -367,6 +450,11 @@ GameLayer.prototype.updateGame = function (ms) {
             i--;
             count--;
         }
+    }
+
+    // Check for loss
+    if (this.player.health <= 0) {
+        this.removeEntity(this.player);
     }
 
     // Add new enemies according to the level
