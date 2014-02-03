@@ -16,7 +16,7 @@ Shot.prototype.update = function (ms) {
 
     // Check boundaries
     // TODO: Should bounds be done in the layer? (That would remove the layer dependency...)
-    if (this.y > 240) {
+    if (this.y > 284) {
         this.dead = true;
     }
 };
@@ -118,7 +118,7 @@ Enemy.prototype.update = function (ms) {
     this.y -= this.speed * ms;
     // TODO: Handle bounds in the layer
     // TODO: Bounds should take height into account, right?
-    if (this.y < -240) {
+    if (this.y < -284) {
         // TODO: Going past the player should actually cause the player to lose a life!
         this.dead = true;
     }
@@ -164,7 +164,7 @@ OrderedQueue.prototype.insert = function (item) {
 };
 
 OrderedQueue.prototype.first = function () {
-    return this.head.value;
+    return this.head ? this.head.value : null;
 }
 
 OrderedQueue.prototype.remove = function () {
@@ -218,7 +218,7 @@ Level.prototype.addWave = function (type, start, end, waveX, waveY, frequency, f
     var interval = 1;
     var iteration = 0;
     waveX = (waveX === undefined ? 0 : waveX);
-    waveY = (waveY === undefined ? 240 : waveY);
+    waveY = (waveY === undefined ? 284 : waveY);
     fJitter = (fJitter === undefined ? 10 * 20 : fJitter);
     xJitter = (xJitter === undefined ? 227 : xJitter);
     // TODO: Multiply jitter/period by (2 - gameSkill)
