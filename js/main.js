@@ -414,8 +414,9 @@ GameLayer.prototype.updateGame = function (ms) {
             remove = true;
         } else {
             // Check collisions
+            // TODO: This is actually a different algorithm than in the original (it used the average of width and
+            // height compared to the Manhattan distance...)
             if (this.checkShotCollision(shot, this.player)) {
-                // TODO: Check for loss
                 // TODO: Explosion
                 // TODO: Shields
                 this.player.health -= shot.damage;
