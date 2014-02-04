@@ -72,22 +72,46 @@ Gun.prototype.update = function (ms) {
     }
 };
 
-function Player(layer) {
-    Entity.call(this);
+function Ship(layer, x, y, width, height, health) {
+    Entity.call(this, x, y, width, height);
     this.layer = layer;
-    this.width = 40;
-    this.height = 48;
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
-    this.health = 500;
+    this.health = health;
+    this.targetX = x;
+    this.targetY = y;
     this.offsetX = 0;
     this.offsetY = 0;
+}
+
+Ship.prototype = Object.create(Entity.prototype);
+
+Ship.prototype.setPosition = function (x, y) {
+    this.targetX = x;
+    this.targetY = y;
+};
+
+Ship.prototype.offset = function (x, y) {
+    this.offsetX += x;
+    this.offsetY += y;
+};
+
+Ship.prototype.updateOffsets = function (ms) {
+    // Scale down temporary offsets
+    var factor = (1 - 0.9 * ms / 250);
+    factor *= factor;
+    this.offsetX *= factor;
+    this.offsetY *= factor;
+};
+
+function Player(layer) {
+    Ship.call(this, layer, 0, 0, 40, 48, 500);
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.guns = [
         new Gun(layer, this, 13, 6, 100, 0, Bullet),
         new Gun(layer, this, -13, 6, 100, 0, Bullet)
     ];
 }
 
-Player.prototype = Object.create(Entity.prototype);
+Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
 
@@ -99,11 +123,6 @@ Player.prototype.reset = function () {
 };
 
 // TODO: Keyboard/touch controls
-Player.prototype.setPosition = function (x, y) {
-    this.targetX = x;
-    this.targetY = y;
-};
-
 Player.prototype.setFiring = function (firing) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
@@ -132,19 +151,14 @@ Player.prototype.update = function (ms) {
     this.y = Math.max(-Player.boundY, Math.min(Player.boundY, y));
 
     // Scale down temporary offsets
-    var factor = (1 - 0.9 * ms / 250);
-    factor *= factor;
-    this.offsetX *= factor;
-    this.offsetY *= factor;
+    this.updateOffsets(ms);
 };
 
 function Enemy(layer, x, y, width, height, speed, health, guns) {
-    Entity.call(this, x, y, width, height);
+    Ship.call(this, layer, x, y, width, height, health);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
-    this.layer = layer;
     this.speed = speed;
-    this.health = health;
     this.guns = guns;
 
     var count = guns.length;
@@ -156,11 +170,12 @@ function Enemy(layer, x, y, width, height, speed, health, guns) {
 }
 
 Enemy.boundX = 256;
-Enemy.prototype = Object.create(Entity.prototype);
+Enemy.prototype = Object.create(Ship.prototype);
 
 Enemy.prototype.update = function (ms) {
-    // TODO: Secondary moves
-    this.y -= this.speed * ms;
+    this.setPosition(this.targetX, this.targetY - this.speed * ms);
+    this.x = this.targetX + this.offsetX;
+    this.y = this.targetY + this.offsetY;
 
     // Shooting
     if (this.guns) {
@@ -396,6 +411,14 @@ GameLayer.prototype.checkShotCollision = function (shot, b) {
         && (shot.y <= b.y + bh);
 };
 
+GameLayer.prototype.checkShipCollision = function (a, b) {
+    // Not particularly precise, but true to the original...
+    var x = a.x - b.x;
+    var y = a.y - b.y;
+    var distance = Math.abs(x) + Math.abs(y);
+    return distance < (a.width + b.width) / 4;
+};
+
 GameLayer.prototype.updateGame = function (ms) {
     // Check bounds and collisions for player shots
     var count = this.playerShots.length;
@@ -452,7 +475,7 @@ GameLayer.prototype.updateGame = function (ms) {
         }
     }
 
-    // Check bounds and health for enemies
+    // Check bounds, health, collisions for enemies
     count = this.enemies.length;
     for (i = 0; i < count; i++) {
         var enemy = this.enemies[i];
@@ -465,6 +488,23 @@ GameLayer.prototype.updateGame = function (ms) {
             // Destroyed
             // TODO: Explosion
             remove = true;
+        } else if (this.checkShipCollision(this.player, enemy)) {
+            // TODO: Move to helper on Player?
+            var damage = Math.min(35, enemy.health / 2);
+            this.player.health -= damage;
+            // TODO: Shields
+            enemy.health -= 40;
+
+            // Knock player
+            var deltaX = (this.player.x - enemy.x);
+            var deltaY = (this.player.y - enemy.y);
+            this.player.offsetX += deltaX * damage * 0.03;
+            this.player.offsetY += deltaY * damage * 0.03;
+
+            // Knock enemy
+            // TODO: Add a mass factor
+            enemy.offsetX -= deltaX / 2;
+            enemy.offsetY -= deltaY / 4;
         }
 
         if (remove) {

@@ -1,2 +1,19 @@
-﻿Add secondary movement for enemies?
-Add collisions between enemies and player
+﻿For alpha:
+Add additional enemy types
+Complete level 1
+Add power-ups
+Add explosions
+
+For beta 1:
+Complete more levels
+Add images
+Add explosions
+Add UI
+Add keyboard controls
+Add ground
+Add shields
+
+For final:
+Add  menus
+Add sounds
+Add touch controls
