@@ -79,6 +79,8 @@ function Player(layer) {
     this.height = 48;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.health = 500;
+    this.offsetX = 0;
+    this.offsetY = 0;
     this.guns = [
         new Gun(layer, this, 13, 6, 100, 0, Bullet),
         new Gun(layer, this, -13, 6, 100, 0, Bullet)
@@ -98,9 +100,8 @@ Player.prototype.reset = function () {
 
 // TODO: Keyboard/touch controls
 Player.prototype.setPosition = function (x, y) {
-    // TODO: It seems like the bounds would be better controlled in the layer...
-    this.x = Math.max(-Player.boundX, Math.min(Player.boundX, x));
-    this.y = Math.max(-Player.boundY, Math.min(Player.boundY, y));
+    this.targetX = x;
+    this.targetY = y;
 };
 
 Player.prototype.setFiring = function (firing) {
@@ -110,11 +111,31 @@ Player.prototype.setFiring = function (firing) {
     }
 };
 
+Player.prototype.takeDamage = function (shot) {
+    this.health -= shot.damage;
+
+    // Knock back
+    this.offsetY += shot.damage / 0.87 * shot.speed;
+};
+
 Player.prototype.update = function (ms) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
         this.guns[i].update(ms);
     }
+
+    // Apply boundaries and temporary offsets
+    // TODO: It seems like the bounds would be better controlled in the layer...
+    var x = this.targetX + this.offsetX;
+    var y = this.targetY + this.offsetY;
+    this.x = Math.max(-Player.boundX, Math.min(Player.boundX, x));
+    this.y = Math.max(-Player.boundY, Math.min(Player.boundY, y));
+
+    // Scale down temporary offsets
+    var factor = (1 - 0.9 * ms / 250);
+    factor *= factor;
+    this.offsetX *= factor;
+    this.offsetY *= factor;
 };
 
 function Enemy(layer, x, y, width, height, speed, health, guns) {
@@ -419,7 +440,7 @@ GameLayer.prototype.updateGame = function (ms) {
             if (this.checkShotCollision(shot, this.player)) {
                 // TODO: Explosion
                 // TODO: Shields
-                this.player.health -= shot.damage;
+                this.player.takeDamage(shot);
                 remove = true;
             }
         }

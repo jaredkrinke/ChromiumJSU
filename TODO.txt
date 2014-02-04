@@ -1,3 +1,2 @@
-﻿Add secondary movement for the player
-Add secondary movement for enemies?
+﻿Add secondary movement for enemies?
 Add collisions between enemies and player
