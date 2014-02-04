@@ -237,16 +237,9 @@ OrderedQueue.prototype.remove = function () {
     return value;
 }
 
-// TODO: This should be called Enemy
-Wave = {
-    Type: {
-        straight: 0
-    }
-};
-
 // TODO: There is a "randFact"--is that actually used anywhere?
-function LevelAction(type, time, x, y) {
-    this.type = type;
+function LevelAction(factory, time, x, y) {
+    this.factory = factory;
     this.time = time;
     this.x = x;
     this.y = y;
@@ -259,23 +252,34 @@ function Level(layer, waves) {
     var count = waves.length;
     for (var i = 0; i < count; i++) {
         var wave = waves[i];
-        switch (wave.type) {
-            case Wave.Type.straight:
-                this.addStraightWave(wave.start, wave.duration, wave.density);
-                break;
-        }
+        wave.factory.call(this, wave.start, wave.duration, wave.density);
     }
 }
 
-Level.prototype.addStraightWave = function (start, duration, density, x, y) {
+Level.prototype.addStraightWave = function (start, duration, density) {
     var xRand = 8;
     // TODO: 60?
     var frequency = 60 / density * 20;
     var end = start + duration;
-    this.addWave(Wave.Type.straight, start, end, x, y, frequency, 5 * 20, xRand, undefined);
+    this.addWave(Straight, start, end, undefined, undefined, frequency, 5 * 20, xRand, undefined);
 };
 
-Level.prototype.addWave = function (type, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter) {
+Level.prototype.addOmniWave = function (start, duration, density) {
+    // Add two small omni waves
+    var xRand = 1;
+    var frequency = 39 / density * 20;
+    var end = start + (duration / 2) + 50 * 20;
+    this.addWave(Omni, start, end, (Math.random() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
+    end = start + duration;
+    this.addWave(Omni, start + (duration / 2) - 50 * 20, end, (Math.random() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
+
+    // And a straight wave
+    xRand = 8;
+    frequency = 200 * 50;
+    this.addWave(Straight, start + 100 * 20, end, undefined, undefined, frequency, 50 * 20, xRand, undefined);
+};
+
+Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter) {
     var interval = 1;
     var iteration = 0;
     waveX = (waveX === undefined ? 0 : waveX);
@@ -287,7 +291,7 @@ Level.prototype.addWave = function (type, start, end, waveX, waveY, frequency, f
     for (var t = start; t < end;) {
         var x = waveX + xJitter * (Math.random() * 2 - 1);
         t += frequency + fJitter * (Math.random() * 2 - 1);
-        this.queue.insert(new LevelAction(type, t, x, waveY));
+        this.queue.insert(new LevelAction(factory, t, x, waveY));
     }
 };
 
@@ -296,11 +300,7 @@ Level.prototype.update = function (ms) {
     var action;
     while ((action = this.queue.first()) && this.timer >= action.time) {
         action = this.queue.remove();
-        switch (action.type) {
-            case Wave.Type.straight:
-                this.layer.addEnemy(new Straight(this.layer, action.x, action.y));
-                break;
-        }
+        this.layer.addEnemy(new action.factory(this.layer, action.x, action.y));
     }
 };
 
@@ -529,7 +529,7 @@ GameLayer.prototype.updateGame = function (ms) {
 GameLayer.prototype.loadLevel1 = function (layer) {
     var waves = [];
     waves.push({
-        type: Wave.Type.straight,
+        factory: Level.prototype.addStraightWave,
         start: 1,
         duration: 600 * 20,
         density: 0.4
