@@ -321,6 +321,14 @@ function LevelAction(factory, time, x, y) {
     this.y = y;
 }
 
+Wave = {
+    formation: {
+        none: 0,
+        arrow: 1,
+        fixed: 2
+    }
+}
+
 function Level(layer, waves) {
     this.layer = layer;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
@@ -362,7 +370,7 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     var end = start + 130 * 20;
     var c = (Math.random() * 2 - 1) / 22.51 * 640;
     // TODO: Set formation to "Arrow"
-    this.addWave(Straight, start, end, c, 10, frequency, 0, 1.6);
+    this.addWave(Straight, start, end, c, 10, frequency, 0, 1.6, undefined, Wave.formation.arrow);
 
     // Add two omni waves
     frequency = 15 / density * 20;
@@ -371,18 +379,32 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     this.addWave(Omni, start + 440 * 20, start + 600 * 20, c, 9, frequency, 5 * 20, 2);
 };
 
-Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter) {
+Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
     var interval = 1;
     var iteration = 0;
     waveX = (waveX === undefined ? 0 : waveX);
     waveY = (waveY === undefined ? 284 : waveY);
     fJitter = (fJitter === undefined ? 10 * 20 : fJitter);
     xJitter = (xJitter === undefined ? 227 : xJitter);
+    formation = (formation === undefined ? Wave.formation.none : formation);
     // TODO: Multiply jitter/period by (2 - gameSkill)
     // TODO: Formation
     // TODO: Use xRand?
     for (var t = start; t < end;) {
-        var x = waveX + xJitter * (Math.random() * 2 - 1);
+        var x = 0;
+
+        // TODO: Supply random factor to the LevelAction (and eventually the enemy constructor)
+        switch (formation) {
+            case Wave.formation.none:
+                x = waveX + xJitter * (Math.random() * 2 - 1);
+                break;
+
+            case Wave.formation.arrow:
+                // TODO: It looks like the original tried to make an arrow but really only made a line... change it?
+                x = waveX - xJitter * iteration;
+                break;
+        }
+
         t += frequency + fJitter * (Math.random() * 2 - 1);
         this.queue.insert(new LevelAction(factory, t, x, waveY));
     }
