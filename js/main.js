@@ -1,9 +1,10 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Shot(x, y, width, height, speed, damage) {
+function Shot(x, y, width, height, vx, vy, damage) {
     Entity.call(this, x, y, width, height);
-    this.speed = speed;
+    this.vx = vx;
+    this.vy = vy;
     this.damage = damage;
     // TODO: Images
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'yellow')];
@@ -12,20 +13,28 @@ function Shot(x, y, width, height, speed, damage) {
 Shot.prototype = Object.create(Entity.prototype);
 
 Shot.prototype.update = function (ms) {
-    this.y += this.speed * ms;
+    this.x += this.vx * ms;
+    this.y += this.vy * ms;
 };
 
 function Bullet(x, y) {
-    Shot.call(this, x, y, 3, 37, 0.71, 3.5);
+    Shot.call(this, x, y, 3, 37, 0, 0.71, 3.5);
 }
 
 Bullet.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
-    Shot.call(this, x, y, 7, 16, -0.28, 75);
+    Shot.call(this, x, y, 7, 16, 0, -0.28, 75);
 }
 
 StraightShot.prototype = Object.create(Shot.prototype);
+
+function OmniShot(x, y, vx, vy) {
+    // TODO: Make it so that the elements get rotated based on direction
+    Shot.call(this, x, y, 6, 6, vx, vy, 6);
+}
+
+OmniShot.prototype = Object.create(Shot.prototype);
 
 function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.layer = layer;
@@ -57,18 +66,25 @@ Gun.prototype.reload = function () {
     this.timer += this.period + this.periodRandomMax * Math.random();
 };
 
+Gun.prototype.createShot = function () {
+    return new this.shot(this.host.x + this.x, this.host.y + this.y);
+};
+
+Gun.prototype.fire = function () {
+    var shot = this.createShot();
+
+    // Add the appropriate kind of shot
+    if (this.host instanceof Player) {
+        this.layer.addPlayerShot(shot);
+    } else {
+        this.layer.addEnemyShot(shot);
+    }
+};
+
 Gun.prototype.update = function (ms) {
     this.timer -= ms;
     if (this.firing && this.timer <= 0) {
-        var shot = new this.shot(this.host.x + this.x, this.host.y + this.y);
-
-        // Add the appropriate kind of shot
-        if (this.host instanceof Player) {
-            this.layer.addPlayerShot(shot);
-        } else {
-            this.layer.addEnemyShot(shot);
-        }
-
+        this.fire();
         this.reload();
     }
 };
@@ -135,7 +151,8 @@ Player.prototype.takeDamage = function (shot) {
     this.health -= shot.damage;
 
     // Knock back
-    this.offsetY += shot.damage / 0.87 * shot.speed;
+    // TODO: Should this also knock horizontally?
+    this.offsetY += shot.damage / 0.87 * shot.vy;
 };
 
 Player.prototype.update = function (ms) {
@@ -203,9 +220,37 @@ function Straight(layer, x, y) {
 
 Straight.prototype = Object.create(Enemy.prototype);
 
+function OmniGun(layer, host, x, y, warmupPeriod) {
+    Gun.call(this, layer, host, x, y, 108 * 20, 0, null, warmupPeriod);
+}
+
+OmniGun.prototype = Object.create(Gun.prototype);
+
+OmniGun.prototype.createShot = function () {
+    // Aim at the player
+    var x = this.host.x + this.x;
+    var y = this.host.y + this.y;
+    var speed = 0.5;
+    var vx = 0;
+    var vy = -speed;
+    var target = this.layer.player;
+    if (target) {
+        var deltaX = target.x - x;
+        var deltaY = target.y - y;
+        var delta = Math.abs(deltaX) + Math.abs(deltaY);
+        vx = speed * deltaX / delta;
+        vy = speed * deltaY / delta;
+    }
+    return new OmniShot(x, y, vx, vy)
+};
+
 function Omni(layer, x, y) {
     // TODO: Gun, mass
-    Enemy.call(this, layer, x, y, 20, 20, 0.1 + 0.057 * Math.random(), 45);
+    Enemy.call(this, layer, x, y, 20, 20, 0.1 + 0.057 * Math.random(), 45, [
+        new OmniGun(layer, this, 0, 0, 0),
+        new OmniGun(layer, this, 0, 0, 6 * 20),
+        new OmniGun(layer, this, 0, 0, 12 * 20)
+    ]);
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'brown')];
@@ -356,6 +401,7 @@ function GameLayer() {
     this.reset();
 }
 
+GameLayer.boundX = 640;
 GameLayer.boundY = 284;
 GameLayer.prototype = Object.create(Layer.prototype);
 
@@ -485,7 +531,10 @@ GameLayer.prototype.updateGame = function (ms) {
         var shot = this.enemyShots[i];
         var remove = false;
 
-        if (shot.y < -GameLayer.boundY) {
+        if (shot.y < -GameLayer.boundY
+            || shot.y > GameLayer.boundY
+            || shot.x < -GameLayer.boundX
+            || shot.x > GameLayer.boundX) {
             remove = true;
         } else {
             // Check collisions
