@@ -159,21 +159,28 @@ function Enemy(layer, x, y, width, height, speed, health, guns) {
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
+    this.target = layer.player;
     this.guns = guns;
 
-    var count = guns.length;
-    for (var i = 0; i < count; i++) {
-        var gun = guns[i];
-        gun.reload();
-        gun.setFiring(true);
+    if (guns) {
+        var count = guns.length;
+        for (var i = 0; i < count; i++) {
+            var gun = guns[i];
+            gun.reload();
+            gun.setFiring(true);
+        }
     }
 }
 
 Enemy.boundX = 256;
 Enemy.prototype = Object.create(Ship.prototype);
 
-Enemy.prototype.update = function (ms) {
+Enemy.prototype.updateTargetLocation = function (ms) {
     this.setPosition(this.targetX, this.targetY - this.speed * ms);
+}
+
+Enemy.prototype.update = function (ms) {
+    this.updateTargetLocation(ms);
     this.x = this.targetX + this.offsetX;
     this.y = this.targetY + this.offsetY;
 
@@ -194,6 +201,29 @@ function Straight(layer, x, y) {
 }
 
 Straight.prototype = Object.create(Enemy.prototype);
+
+function Omni(layer, x, y) {
+    // TODO: Gun, mass
+    Enemy.call(this, layer, x, y, 20, 20, 0.1, 45);
+    this.movementFactor = Math.random();
+    this.lastMoveX = 0;
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'brown')];
+}
+
+Omni.prototype = Object.create(Enemy.prototype);
+
+Omni.prototype.updateTargetLocation = function (ms) {
+    if (this.target) {
+        var deltaX = this.target.x - this.x;
+        // Adjust x movement slowly
+        this.lastMoveX *= 0.9;
+        this.lastMoveX += (0.1 * (0.014 * deltaX));
+        this.targetX = this.x + (this.movementFactor * this.lastMoveX);
+    }
+
+    this.targetY -= this.speed * ms;
+    // TODO: Bounds? At least horizontal bounds are needed
+};
 
 function OrderedQueue(compare) {
     this.compare = compare;
@@ -529,7 +559,8 @@ GameLayer.prototype.updateGame = function (ms) {
 GameLayer.prototype.loadLevel1 = function (layer) {
     var waves = [];
     waves.push({
-        factory: Level.prototype.addStraightWave,
+        //factory: Level.prototype.addStraightWave,
+        factory: Level.prototype.addOmniWave,
         start: 1,
         duration: 600 * 20,
         density: 0.4
