@@ -333,6 +333,7 @@ function Level(layer, waves) {
 }
 
 Level.prototype.addStraightWave = function (start, duration, density) {
+    // TODO: Scale xRand?
     var xRand = 8;
     // TODO: 60?
     var frequency = 60 / density * 20;
@@ -355,6 +356,21 @@ Level.prototype.addOmniWave = function (start, duration, density) {
     this.addWave(Straight, start + 100 * 20, end, undefined, undefined, frequency, 50 * 20, xRand, undefined);
 };
 
+Level.prototype.addStraightArrowWave = function (start, duration, density) {
+    // Add a straight arrow wave
+    var frequency = 50 / density * 20;
+    var end = start + 130 * 20;
+    var c = (Math.random() * 2 - 1) / 22.51 * 640;
+    // TODO: Set formation to "Arrow"
+    this.addWave(Straight, start, end, c, 10, frequency, 0, 1.6);
+
+    // Add two omni waves
+    frequency = 15 / density * 20;
+    this.addWave(Omni, start + 220 * 20, start + 260 * 20, c, 9, frequency, 5 * 20, 2);
+    frequency = 22 / density * 20;
+    this.addWave(Omni, start + 440 * 20, start + 600 * 20, c, 9, frequency, 5 * 20, 2);
+};
+
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter) {
     var interval = 1;
     var iteration = 0;
@@ -364,6 +380,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
     xJitter = (xJitter === undefined ? 227 : xJitter);
     // TODO: Multiply jitter/period by (2 - gameSkill)
     // TODO: Formation
+    // TODO: Use xRand?
     for (var t = start; t < end;) {
         var x = waveX + xJitter * (Math.random() * 2 - 1);
         t += frequency + fJitter * (Math.random() * 2 - 1);

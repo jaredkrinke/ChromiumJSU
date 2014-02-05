@@ -1,4 +1,5 @@
 ﻿For alpha:
+Add formations
 Add additional enemy types
 Complete level 1
 Add power-ups
