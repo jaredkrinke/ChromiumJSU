@@ -27,7 +27,7 @@ function StraightShot(x, y) {
 
 StraightShot.prototype = Object.create(Shot.prototype);
 
-function Gun(layer, host, x, y, period, periodRandomMax, shot) {
+function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.layer = layer;
     this.host = host;
     this.x = x;
@@ -35,6 +35,7 @@ function Gun(layer, host, x, y, period, periodRandomMax, shot) {
     this.period = period;
     this.periodRandomMax = periodRandomMax;
     this.shot = shot;
+    this.warmupPeriod = warmupPeriod || 0;
     this.reset();
 }
 
@@ -47,8 +48,8 @@ Gun.prototype.setFiring = function (firing) {
     this.firing = firing;
 
     // Reset timer if the gun is ready to fire
-    if (firing && this.timer < 0) {
-        this.timer = 0;
+    if (firing && this.timer <= 0) {
+        this.timer = this.warmupPeriod;
     }
 };
 
@@ -166,7 +167,7 @@ function Enemy(layer, x, y, width, height, speed, health, guns) {
         var count = guns.length;
         for (var i = 0; i < count; i++) {
             var gun = guns[i];
-            gun.reload();
+            // TODO: Wait until on screen to fire!
             gun.setFiring(true);
         }
     }
@@ -177,7 +178,7 @@ Enemy.prototype = Object.create(Ship.prototype);
 
 Enemy.prototype.updateTargetLocation = function (ms) {
     this.setPosition(this.targetX, this.targetY - this.speed * ms);
-}
+};
 
 Enemy.prototype.update = function (ms) {
     this.updateTargetLocation(ms);
@@ -196,7 +197,7 @@ Enemy.prototype.update = function (ms) {
 // TODO: Random factor?
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110, [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot)]);
+    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110, [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, 30 * 20 + 90 * 20 * Math.random())]);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'gray')];
 }
 
@@ -204,7 +205,7 @@ Straight.prototype = Object.create(Enemy.prototype);
 
 function Omni(layer, x, y) {
     // TODO: Gun, mass
-    Enemy.call(this, layer, x, y, 20, 20, 0.1, 45);
+    Enemy.call(this, layer, x, y, 20, 20, 0.1 + 0.057 * Math.random(), 45);
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'brown')];
