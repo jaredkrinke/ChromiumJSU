@@ -369,7 +369,6 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     var frequency = 50 / density * 20;
     var end = start + 130 * 20;
     var c = (Math.random() * 2 - 1) / 22.51 * 640;
-    // TODO: Set formation to "Arrow"
     this.addWave(Straight, start, end, c, 10, frequency, 0, 1.6, undefined, Wave.formation.arrow);
 
     // Add two omni waves
@@ -377,6 +376,23 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     this.addWave(Omni, start + 220 * 20, start + 260 * 20, c, 9, frequency, 5 * 20, 2);
     frequency = 22 / density * 20;
     this.addWave(Omni, start + 440 * 20, start + 600 * 20, c, 9, frequency, 5 * 20, 2);
+};
+
+Level.prototype.addOmniArrowWave = function (start, duration, density) {
+    // Add omni arrow waves
+    var frequency = 25 / density * 20;
+    var end = start + 130 * 20;
+    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var xRand = 1;
+    this.addWave(Omni, start + 50 * 20, start + 150 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+
+    this.addWave(Omni, start + 250 * 20, start + 320 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 300 * 20, start + 330 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 350 * 20, start + 470 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+
+    frequency = 5 / density * 20;
+    xRand = 1.8;
+    this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
 };
 
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
