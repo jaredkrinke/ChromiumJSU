@@ -1,11 +1,12 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Shot(x, y, width, height, vx, vy, damage) {
+function Shot(x, y, width, height, vx, vy, damage, permanent) {
     Entity.call(this, x, y, width, height);
     this.vx = vx;
     this.vy = vy;
     this.damage = damage;
+    this.permanent = permanent;
     // TODO: Images
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'yellow')];
 }
@@ -22,6 +23,18 @@ function Bullet(x, y) {
 }
 
 Bullet.prototype = Object.create(Shot.prototype);
+
+function Plasma(x, y) {
+    Shot.call(this, x, y, 3, 43, 0, 0.28, 6, true);
+}
+
+Plasma.prototype = Object.create(Shot.prototype);
+
+function Emp(x, y) {
+    Shot.call(this, x, y, 9, 43, 0, 0.43, 40);
+}
+
+Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
     Shot.call(this, x, y, 7, 16, 0, -0.28, 75);
@@ -123,10 +136,20 @@ function Player(layer) {
     Ship.call(this, layer, 0, 0, 40, 48, 500);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.guns = [
+        // Default machine gun
         new Gun(layer, this, 8, 23, 100, 0, Bullet),
         new Gun(layer, this, -8, 23, 100, 0, Bullet),
+
+        // Extra machine gun
         new Gun(layer, this, 13, 17, 100, 0, Bullet),
-        new Gun(layer, this, -13, 17, 100, 0, Bullet)
+        new Gun(layer, this, -13, 17, 100, 0, Bullet),
+
+        // Plasma
+        new Gun(layer, this, 0, 31, 500, 0, Plasma),
+
+        // EMP
+        new Gun(layer, this, -20, 11, 200, 0, Emp),
+        new Gun(layer, this, 20, 11, 200, 0, Emp, 100)
     ];
 }
 
@@ -419,6 +442,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
 
             case Wave.formation.arrow:
                 // TODO: It looks like the original tried to make an arrow but really only made a line... change it?
+                // TODO: Double-check this one--it seems like all the enemies show up at once which seems wrong
                 x = waveX - xJitter * iteration;
                 break;
         }
@@ -569,8 +593,13 @@ GameLayer.prototype.updateGame = function (ms) {
             for (var j = 0; j < enemyCount; j++) {
                 var enemy = this.enemies[j];
                 if (this.checkShotCollision(shot, enemy)) {
-                    enemy.health -= shot.damage;
-                    remove = true;
+                    if (shot.permanent) {
+                        // Scale damage based on time for permanent shots
+                        enemy.health -= shot.damage * ms / 20;
+                    } else {
+                        enemy.health -= shot.damage;
+                        remove = true;
+                    }
                 }
             }
         }
