@@ -369,13 +369,13 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     var frequency = 50 / density * 20;
     var end = start + 130 * 20;
     var c = (Math.random() * 2 - 1) / 22.51 * 640;
-    this.addWave(Straight, start, end, c, 10, frequency, 0, 1.6, undefined, Wave.formation.arrow);
+    this.addWave(Straight, start, end, c, undefined, frequency, 0, 1.6, undefined, Wave.formation.arrow);
 
     // Add two omni waves
     frequency = 15 / density * 20;
-    this.addWave(Omni, start + 220 * 20, start + 260 * 20, c, 9, frequency, 5 * 20, 2);
+    this.addWave(Omni, start + 220 * 20, start + 260 * 20, c, undefined, frequency, 5 * 20, 2);
     frequency = 22 / density * 20;
-    this.addWave(Omni, start + 440 * 20, start + 600 * 20, c, 9, frequency, 5 * 20, 2);
+    this.addWave(Omni, start + 440 * 20, start + 600 * 20, c, undefined, frequency, 5 * 20, 2);
 };
 
 Level.prototype.addOmniArrowWave = function (start, duration, density) {
@@ -384,15 +384,15 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     var end = start + 130 * 20;
     var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
     var xRand = 1;
-    this.addWave(Omni, start + 50 * 20, start + 150 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 50 * 20, start + 150 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 
-    this.addWave(Omni, start + 250 * 20, start + 320 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
-    this.addWave(Omni, start + 300 * 20, start + 330 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
-    this.addWave(Omni, start + 350 * 20, start + 470 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 250 * 20, start + 320 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 300 * 20, start + 330 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 350 * 20, start + 470 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 
     frequency = 5 / density * 20;
     xRand = 1.8;
-    this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, 10, frequency, 0, xRand, undefined, Wave.formation.arrow);
+    this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 };
 
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
@@ -623,7 +623,7 @@ GameLayer.prototype.updateGame = function (ms) {
             // Destroyed
             // TODO: Explosion
             remove = true;
-        } else if (this.checkShipCollision(this.player, enemy)) {
+        } else if (this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
             // TODO: Move to helper on Player?
             var damage = Math.min(35, enemy.health / 2);
             this.player.health -= damage;
@@ -662,14 +662,59 @@ GameLayer.prototype.updateGame = function (ms) {
 
 // TODO: Where should this code go?
 GameLayer.prototype.loadLevel1 = function (layer) {
+    var totalTime = 12000 * 20;
+    var waveDuration = 500;
+    time = 600 * 20;
     var waves = [];
+
+    // Always add the same first wave
     waves.push({
-        //factory: Level.prototype.addStraightWave,
-        factory: Level.prototype.addOmniWave,
+        factory: Level.prototype.addStraightWave,
         start: 1,
-        duration: 600 * 20,
+        duration: time,
         density: 0.4
     });
+
+    // Now add random waves
+    while (time < totalTime - 1000 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.15) {
+            // 15% chance
+            factory = Level.prototype.addStraightArrowWave;
+        } else if (r < 0.25) {
+            // 10% chance
+            factory = Level.prototype.addOmniArrowWave;
+        } else if (r > 0.6) {
+            // 60% chance
+            factory = Level.prototype.addStraightWave;
+        } else {
+            // 15% chance
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // TODO: Ray gun enemy
+    // TODO: Boss
+    // TODO: Ammunition
+    // TODO: Power-ups
 
     return new Level(this, waves);
 };
