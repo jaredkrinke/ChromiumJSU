@@ -123,8 +123,10 @@ function Player(layer) {
     Ship.call(this, layer, 0, 0, 40, 48, 500);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.guns = [
-        new Gun(layer, this, 13, 6, 100, 0, Bullet),
-        new Gun(layer, this, -13, 6, 100, 0, Bullet)
+        new Gun(layer, this, 8, 23, 100, 0, Bullet),
+        new Gun(layer, this, -8, 23, 100, 0, Bullet),
+        new Gun(layer, this, 13, 17, 100, 0, Bullet),
+        new Gun(layer, this, -13, 17, 100, 0, Bullet)
     ];
 }
 
