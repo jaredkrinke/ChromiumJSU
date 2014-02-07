@@ -55,6 +55,12 @@ function RayGunShot(x, y) {
 
 RayGunShot.prototype = Object.create(Shot.prototype);
 
+function TankShot(x, y) {
+    Shot.call(this, x, y, 13, 13, 0, -1, 100);
+}
+
+TankShot.prototype = Object.create(Shot.prototype);
+
 function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.layer = layer;
     this.host = host;
