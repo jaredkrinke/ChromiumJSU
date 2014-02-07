@@ -210,15 +210,6 @@ function Enemy(layer, x, y, width, height, speed, health, guns) {
     this.speed = speed;
     this.target = layer.player;
     this.guns = guns;
-
-    if (guns) {
-        var count = guns.length;
-        for (var i = 0; i < count; i++) {
-            var gun = guns[i];
-            // TODO: Wait until on screen to fire!
-            gun.setFiring(true);
-        }
-    }
 }
 
 Enemy.boundX = 256;
@@ -228,12 +219,30 @@ Enemy.prototype.updateTargetLocation = function (ms) {
     this.setPosition(this.targetX, this.targetY - this.speed * ms);
 };
 
+Enemy.prototype.setFiring = function (firing) {
+    var count = this.guns.length;
+    for (var i = 0; i < count; i++) {
+        var gun = this.guns[i];
+        gun.setFiring(firing);
+    }
+};
+
+Enemy.prototype.updateGuns = function (ms) {
+    if (this.guns && !this.startedFiring) {
+        if (this.y < 240) {
+            this.setFiring(true);
+            this.startedFiring = true;
+        }
+    }
+};
+
 Enemy.prototype.update = function (ms) {
     this.updateTargetLocation(ms);
     this.x = this.targetX + this.offsetX;
     this.y = this.targetY + this.offsetY;
 
     // Shooting
+    this.updateGuns(ms);
     if (this.guns) {
         var count = this.guns.length;
         for (var i = 0; i < count; i++) {
@@ -344,6 +353,17 @@ RayGun.prototype.updateTargetLocation = function (ms) {
 
     this.targetY += this.lastMoveY - this.speed * ms;
     // TODO: Bounds? At least horizontal bounds are needed
+};
+
+RayGun.prototype.updateGuns = function (ms) {
+    if (this.y < 240 && this.target) {
+        var deltaX = this.target.x - this.x;
+        if (Math.abs(deltaX) < 43) {
+            this.setFiring(true);
+        } else {
+            this.setFiring(false);
+        }
+    }
 };
 
 function OrderedQueue(compare) {
@@ -803,17 +823,6 @@ GameLayer.prototype.loadLevel1 = function (layer) {
         start: totalTime / 2,
         duration: totalTime - 1000 * 20 - totalTime / 2
     });
-
-    // TODO: Remove
-    //waves.push({
-    //    factory: 
-    //        function (start, duration, density) {
-    //            this.addWave(RayGun, start, 250, undefined, undefined, 500, 0, 8);
-    //        },
-
-    //    start: 0,
-    //    duration: totalTime
-    //});
 
     // TODO: Boss
     // TODO: Ammunition
