@@ -372,6 +372,32 @@ RayGun.prototype.updateGuns = function (ms) {
     }
 };
 
+function Boss0(layer, x, y) {
+    Enemy.call(this, layer, x, y, 199, 129, 0.028, 10000, [
+        // TODO: This should only fire when near the player
+        new Gun(layer, this, 0, -48, 20, 0, RayGunShot),
+
+        // TODO: These should turn on and off
+        new Gun(layer, this, 57, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, 68, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, 79, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, -57, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, -68, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, -79, -54, 3 * 20, 0, StraightShot),
+
+        // TODO: These should be aimed at the player and turn on and off
+        //new Gun(layer, this, 31, -13, 50 * 20, 0, OmniShot),
+        //new Gun(layer, this, -31, -13, 50 * 20, 0, OmniShot),
+
+        // TODO: These should be turned on and off
+        new Gun(layer, this, -31, -13, 500 * 20, 0, TankShot)
+    ]);
+
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'cyan')];
+}
+
+Boss0.prototype = Object.create(Enemy.prototype);
+
 function OrderedQueue(compare) {
     this.compare = compare;
     this.head = null;
@@ -573,7 +599,17 @@ GameLayer.prototype.reset = function () {
     this.clearEnemies();
     this.clearEnemyShots();
     // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
+    //this.level = this.loadLevel1();
+
+    // TODO: Load a level instead of testing one enemy
+    this.level = new Level(this, [{
+        factory: function (start, duration, density) {
+            this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+        },
+
+        start: 0,
+        duration: 100
+    }]);
 };
 
 GameLayer.prototype.addPlayerShot = function (shot) {
