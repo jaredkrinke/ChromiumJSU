@@ -1,4 +1,7 @@
-﻿For alpha:
+﻿Bugs:
+Releasing the mouse button outside of the canvas doesn't cause firing to stop
+
+For alpha:
 Add additional enemy types
 Complete level 1
 Add power-ups
@@ -14,6 +17,6 @@ Add ground
 Add shields
 
 For final:
-Add  menus
+Add menus
 Add sounds
 Add touch controls

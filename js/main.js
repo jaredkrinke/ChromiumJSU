@@ -49,6 +49,12 @@ function OmniShot(x, y, vx, vy) {
 
 OmniShot.prototype = Object.create(Shot.prototype);
 
+function RayGunShot(x, y) {
+    Shot.call(this, x, y, 9, 14, 0, -0.85, 20);
+}
+
+RayGunShot.prototype = Object.create(Shot.prototype);
+
 function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.layer = layer;
     this.host = host;
@@ -270,8 +276,8 @@ OmniGun.prototype.createShot = function () {
 };
 
 function Omni(layer, x, y) {
-    // TODO: Gun, mass
-    Enemy.call(this, layer, x, y, 20, 20, 0.1 + 0.057 * Math.random(), 45, [
+    // TODO: Mass
+    Enemy.call(this, layer, x, y, 40, 40, 0.1 + 0.057 * Math.random(), 45, [
         new OmniGun(layer, this, 0, 0, 0),
         new OmniGun(layer, this, 0, 0, 6 * 20),
         new OmniGun(layer, this, 0, 0, 12 * 20)
@@ -293,6 +299,50 @@ Omni.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY -= this.speed * ms;
+    // TODO: Bounds? At least horizontal bounds are needed
+};
+
+function RayGun(layer, x, y) {
+    // TODO: This enemy's gun should only fire when near the player
+    Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000, [new Gun(layer, this, 0, -14, 20, 0, RayGunShot, 0)]);
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'purple')];
+    this.timer = 0;
+    this.movementFactor = 0.5 + Math.random() / 2;
+    this.lastMoveX = 0;
+    this.lastMoveY = 0;
+}
+
+RayGun.prototype = Object.create(Enemy.prototype);
+
+RayGun.prototype.updateTargetLocation = function (ms) {
+    this.timer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.x;
+        var deltaY = this.target.y - this.y;
+        var deltaXMagnitude = Math.abs(deltaX);
+        var oscillateDistance = 85;
+        var dx = 0;
+
+        if (deltaXMagnitude < oscillateDistance) {
+            // Oscillate near the target when close (horizontally)
+            dx = (oscillateDistance - deltaXMagnitude) / oscillateDistance * (3 * Math.sin(this.timer));
+        }
+
+        if (deltaXMagnitude < 199) {
+            // Decrease vertical speed when reasonable close
+            deltaY *= 0.1;
+        }
+
+        // Adjust movement slowly
+        this.lastMoveX *= 0.975;
+        this.lastMoveX += (0.002 * deltaX);
+        this.lastMoveY *= 0.9;
+        this.lastMoveY += 0.001 * deltaY;
+
+        this.targetX = this.x + (this.movementFactor * this.lastMoveX + dx);
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
     // TODO: Bounds? At least horizontal bounds are needed
 };
 
@@ -418,6 +468,11 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     frequency = 5 / density * 20;
     xRand = 1.8;
     this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
+};
+
+Level.prototype.addRayGunWave = function (start, duration, density) {
+    var end = start + duration;
+    this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
 };
 
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
@@ -742,7 +797,24 @@ GameLayer.prototype.loadLevel1 = function (layer) {
         time += (50 + 50 * Math.random()) * 20;
     }
 
-    // TODO: Ray gun enemy
+    // Ray gun starts half way through
+    waves.push({
+        factory: Level.prototype.addRayGunWave,
+        start: totalTime / 2,
+        duration: totalTime - 1000 * 20 - totalTime / 2
+    });
+
+    // TODO: Remove
+    //waves.push({
+    //    factory: 
+    //        function (start, duration, density) {
+    //            this.addWave(RayGun, start, 250, undefined, undefined, 500, 0, 8);
+    //        },
+
+    //    start: 0,
+    //    duration: totalTime
+    //});
+
     // TODO: Boss
     // TODO: Ammunition
     // TODO: Power-ups
