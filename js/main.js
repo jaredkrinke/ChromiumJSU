@@ -396,6 +396,10 @@ function Boss0(layer, x, y) {
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
     Enemy.call(this, layer, x, y, 199, 129, 0.028, 10000, guns);
 
+    this.moveTimer = 0;
+    this.lastMoveX = 0;
+    this.lastMoveY = 0;
+
     this.timer = 0;
     this.steps = 0;
     this.straightCounter = 0;
@@ -466,6 +470,32 @@ Boss0.prototype.updateGuns = function (ms) {
             }
         }
     }
+};
+
+Boss0.prototype.updateTargetLocation = function (ms) {
+    this.moveTimer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.x;
+        var deltaY = this.target.y - this.y;
+        var approach = 199;
+
+        if (Math.abs(deltaY) < approach) {
+            deltaY *= deltaY / approach;
+        }
+
+        deltaX += 143 * Math.sin(this.moveTimer / 10);
+
+        // Adjust movement slowly
+        this.lastMoveX *= 0.98;
+        this.lastMoveX += (0.0005 * deltaX);
+        this.lastMoveY *= 0.9;
+        this.lastMoveY += 0.001 * deltaY;
+
+        this.targetX += this.lastMoveX;
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
+    // TODO: Bounds?
 };
 
 function OrderedQueue(compare) {
