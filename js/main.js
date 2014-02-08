@@ -163,7 +163,7 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, 40, 48, 500);
+    Ship.call(this, layer, 0, 0, 40, 48, 50000);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.guns = [
         // Default machine gun
@@ -285,7 +285,7 @@ function Straight(layer, x, y) {
 Straight.prototype = Object.create(Enemy.prototype);
 
 function OmniGun(layer, host, x, y, warmupPeriod) {
-    Gun.call(this, layer, host, x, y, 108 * 20, 0, null, warmupPeriod);
+    Gun.call(this, layer, host, x, y, 108 * 20, 0, OmniShot, warmupPeriod);
     this.speed = 0.5;
 }
 
@@ -627,6 +627,11 @@ Level.prototype.addRayGunWave = function (start, duration, density) {
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
 };
 
+Level.prototype.addBoss0Wave = function (start, duration) {
+    var end = start + duration;
+    this.addWave(Boss0, start, end, 0, 426, 5000, 0, 4);
+};
+
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
     var interval = 1;
     var iteration = 0;
@@ -699,17 +704,17 @@ GameLayer.prototype.reset = function () {
     this.clearEnemies();
     this.clearEnemyShots();
     // TODO: Don't just load this by default
-    //this.level = this.loadLevel1();
+    this.level = this.loadLevel1();
 
     // TODO: Load a level instead of testing one enemy
-    this.level = new Level(this, [{
-        factory: function (start, duration, density) {
-            this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
-        },
+    //this.level = new Level(this, [{
+    //    factory: function (start, duration, density) {
+    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //    },
 
-        start: 0,
-        duration: 100
-    }]);
+    //    start: 0,
+    //    duration: 100
+    //}]);
 };
 
 GameLayer.prototype.addPlayerShot = function (shot) {
@@ -966,7 +971,13 @@ GameLayer.prototype.loadLevel1 = function (layer) {
         duration: totalTime - 1000 * 20 - totalTime / 2
     });
 
-    // TODO: Boss
+    // Boss
+    waves.push({
+        factory: Level.prototype.addBoss0Wave,
+        start: totalTime + 75 * 20,
+        duration: (1000 - 75) * 20
+    });
+
     // TODO: Ammunition
     // TODO: Power-ups
 
