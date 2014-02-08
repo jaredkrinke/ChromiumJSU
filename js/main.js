@@ -73,6 +73,24 @@ function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.reset();
 }
 
+Gun.createAimedShot = function () {
+    // Aim at the player
+    var x = this.host.x + this.x;
+    var y = this.host.y + this.y;
+    var speed = this.speed;
+    var vx = 0;
+    var vy = -speed;
+    var target = this.layer.player;
+    if (target) {
+        var deltaX = target.x - x;
+        var deltaY = target.y - y;
+        var delta = Math.abs(deltaX) + Math.abs(deltaY);
+        vx = speed * deltaX / delta;
+        vy = speed * deltaY / delta;
+    }
+    return new this.shot(x, y, vx, vy)
+};
+
 Gun.prototype.reset = function () {
     this.firing = false;
     this.timer = 0;
@@ -268,27 +286,11 @@ Straight.prototype = Object.create(Enemy.prototype);
 
 function OmniGun(layer, host, x, y, warmupPeriod) {
     Gun.call(this, layer, host, x, y, 108 * 20, 0, null, warmupPeriod);
+    this.speed = 0.5;
 }
 
 OmniGun.prototype = Object.create(Gun.prototype);
-
-OmniGun.prototype.createShot = function () {
-    // Aim at the player
-    var x = this.host.x + this.x;
-    var y = this.host.y + this.y;
-    var speed = 0.5;
-    var vx = 0;
-    var vy = -speed;
-    var target = this.layer.player;
-    if (target) {
-        var deltaX = target.x - x;
-        var deltaY = target.y - y;
-        var delta = Math.abs(deltaX) + Math.abs(deltaY);
-        vx = speed * deltaX / delta;
-        vy = speed * deltaY / delta;
-    }
-    return new OmniShot(x, y, vx, vy)
-};
+OmniGun.prototype.createShot = Gun.createAimedShot;
 
 function Omni(layer, x, y) {
     // TODO: Mass
@@ -373,30 +375,98 @@ RayGun.prototype.updateGuns = function (ms) {
 };
 
 function Boss0(layer, x, y) {
-    Enemy.call(this, layer, x, y, 199, 129, 0.028, 10000, [
-        // TODO: This should only fire when near the player
-        new Gun(layer, this, 0, -48, 20, 0, RayGunShot),
-
-        // TODO: These should turn on and off
+    this.rayGun = new Gun(layer, this, 0, -48, 20, 0, RayGunShot);
+    this.straightGuns = [
         new Gun(layer, this, 57, -54, 3 * 20, 0, StraightShot),
         new Gun(layer, this, 68, -54, 3 * 20, 0, StraightShot),
         new Gun(layer, this, 79, -54, 3 * 20, 0, StraightShot),
         new Gun(layer, this, -57, -54, 3 * 20, 0, StraightShot),
         new Gun(layer, this, -68, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, -79, -54, 3 * 20, 0, StraightShot),
+        new Gun(layer, this, -79, -54, 3 * 20, 0, StraightShot)
+    ];
+    this.omniGuns = [
+        new Gun(layer, this, 31, -13, 50 * 20, 0, OmniShot),
+        new Gun(layer, this, -31, -13, 50 * 20, 0, OmniShot)
+    ];
+    this.tankGuns = [
+        new Gun(layer, this, -31, -13, 500 * 20, 0, TankShot),
+        new Gun(layer, this, 31, -13, 500 * 20, 0, TankShot)
+    ];
+    var guns = [this.rayGun];
+    guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
+    Enemy.call(this, layer, x, y, 199, 129, 0.028, 10000, guns);
 
-        // TODO: These should be aimed at the player and turn on and off
-        //new Gun(layer, this, 31, -13, 50 * 20, 0, OmniShot),
-        //new Gun(layer, this, -31, -13, 50 * 20, 0, OmniShot),
-
-        // TODO: These should be turned on and off
-        new Gun(layer, this, -31, -13, 500 * 20, 0, TankShot)
-    ]);
-
+    this.timer = 0;
+    this.steps = 0;
+    this.straightCounter = 0;
+    this.ammoSpeed = 0.5;
+    this.omniV = [0, -this.ammoSpeed];
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'cyan')];
+
+    // Use boss's aim for omni shots
+    var boss = this;
+    var createOmniShot = function () {
+        return new this.shot(this.host.x + this.x, this.host.y + this.y, boss.omniV[0], boss.omniV[1]);
+    };
+    this.omniGuns[0].createShot = createOmniShot;
+    this.omniGuns[1].createShot = createOmniShot;
+
+    // Tank guns aim automatically
+    this.tankGuns[0].createShot = Gun.createAimedShot;
+    this.tankGuns[0].speed = 2 * this.ammoSpeed;
+    this.tankGuns[1].createShot = Gun.createAimedShot;
+    this.tankGuns[1].speed = 2 * this.ammoSpeed;
 }
 
 Boss0.prototype = Object.create(Enemy.prototype);
+
+Boss0.prototype.updateGuns = function (ms) {
+    this.timer += ms;
+    if (this.y < 240) {
+        var deltaX = this.target.x - this.x;
+
+        // Fire ray gun if near the player
+        this.rayGun.setFiring(Math.abs(deltaX) < 46);
+
+        // Handle guns that are controlled by frame count
+        var nextStep = Math.floor(this.timer / 20);
+        for (; this.steps < nextStep; this.steps++) {
+            // Straight guns
+            if (this.steps % 5 === 0) {
+                this.straightCounter++;
+                this.straightCounter %= 15;
+                if (this.straightCounter < 6) {
+                    var index = this.straightCounter % 3;
+                    this.straightGuns[index].fire();
+                    this.straightGuns[index + 3].fire();
+                }
+            }
+
+            // Adjust aim for omni guns
+            if ((this.steps - 1) % 7) {
+                var deltaY = this.target.y - this.y;
+                var d = Math.abs(deltaX) + Math.abs(deltaY);
+                this.omniV[0] = this.ammoSpeed * deltaX / d;
+                this.omniV[1] = this.ammoSpeed * deltaY / d;
+            }
+
+            // Fire omni guns
+            if ((this.steps / 200) % 2 === 0) {
+                if ((this.steps / 100) % 2 === 0) {
+                    if ((this.steps / 50) % 2 === 0) {
+                        this.omniGuns[0].fire()
+                        this.omniGuns[1].fire()
+                    }
+                } else if (this.steps % 10 === 0) {
+                    // Fire tank guns
+                    // TODO: Is this basically dead code?
+                    this.tankGuns[0].fire();
+                    this.tankGuns[1].fire();
+                }
+            }
+        }
+    }
+};
 
 function OrderedQueue(compare) {
     this.compare = compare;
