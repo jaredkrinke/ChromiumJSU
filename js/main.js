@@ -556,6 +556,7 @@ Wave = {
     }
 }
 
+// TODO: Maybe take a maximum time and reject all adds that come after that?
 function Level(layer, waves) {
     this.layer = layer;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });

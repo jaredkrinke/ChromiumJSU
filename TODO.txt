@@ -1,12 +1,9 @@
 ﻿Bugs:
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
-Two bosses appear...
 
 For alpha:
-Add additional enemy types
-Complete level 1
-Add power-ups
+Add power-ups/ammunition
 Add explosions
 
 For beta 1:
