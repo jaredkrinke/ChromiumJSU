@@ -8,13 +8,7 @@ function Shot(x, y, image, width, height, vx, vy, damage, permanent) {
     this.damage = damage;
     this.permanent = permanent;
 
-    var imageElement = Shot.images[image];
-    if (!imageElement) {
-        imageElement = new Image(image, 'yellow');
-        Shot.images[image] = imageElement;
-    }
-
-    this.elements = [imageElement];
+    this.elements = [image];
 }
 
 Shot.images = {};
@@ -26,46 +20,53 @@ Shot.prototype.update = function (ms) {
 };
 
 function Bullet(x, y) {
-    Shot.call(this, x, y, 'images/bullet.png', 3, 18, 0, 0.71, 3.5);
+    Shot.call(this, x, y, Bullet.image, 3, 18, 0, 0.71, 3.5);
 }
 
+Bullet.image = new Image('images/bullet.png', 'yellow');
 Bullet.prototype = Object.create(Shot.prototype);
 
 function Plasma(x, y) {
-    Shot.call(this, x, y, 'images/plasma.png', 6, 43, 0, 0.28, 6, true);
+    Shot.call(this, x, y, Plasma.image, 6, 43, 0, 0.28, 6, true);
 }
 
+Plasma.image = new Image('images/plasma.png', 'yellow');
 Plasma.prototype = Object.create(Shot.prototype);
 
 function Emp(x, y) {
-    Shot.call(this, x, y, 'images/emp.png', 17, 43, 0, 0.43, 40);
+    Shot.call(this, x, y, Emp.image, 17, 43, 0, 0.43, 40);
 }
 
+Emp.image = new Image('images/emp.png', 'yellow');
 Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
-    Shot.call(this, x, y, 'images/straightShot.png', 14, 31, 0, -0.28, 75);
+    Shot.call(this, x, y, StraightShot.image, 14, 31, 0, -0.28, 75);
 }
 
+StraightShot.image = new Image('images/straightShot.png', 'yellow');
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
     // TODO: Make it so that the elements get rotated based on direction
-    Shot.call(this, x, y, 'images/omniShot.png', 13, 13, vx, vy, 6);
+    Shot.call(this, x, y, OmniShot.image, 13, 13, vx, vy, 6);
 }
 
+OmniShot.image = new Image('images/omniShot.png', 'yellow');
 OmniShot.prototype = Object.create(Shot.prototype);
 
 function RayGunShot(x, y) {
-    Shot.call(this, x, y, 'images/rayGunShot.png', 17, 28, 0, -0.85, 20);
+    Shot.call(this, x, y, RayGunShot.image, 17, 28, 0, -0.85, 20);
 }
 
+RayGunShot.image = new Image('images/rayGunShot.png', 'yellow');
 RayGunShot.prototype = Object.create(Shot.prototype);
 
 function TankShot(x, y) {
-    Shot.call(this, x, y, 'images/tankShot.png', 26, 26, 0, -1, 100);
+    Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100);
 }
 
+TankShot.image = new Image('images/tankShot.png', 'yellow');
 TankShot.prototype = Object.create(Shot.prototype);
 
 function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
