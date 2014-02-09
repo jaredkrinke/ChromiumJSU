@@ -172,7 +172,7 @@ Ship.prototype.updateOffsets = function (ms) {
 
 function Player(layer) {
     Ship.call(this, layer, 0, 0, 40, 48, 500);
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
+    this.elements = [Player.image];
     this.guns = [
         // Default machine gun
         new Gun(layer, this, 8, 23, 100, 0, Bullet),
@@ -191,6 +191,7 @@ function Player(layer) {
     ];
 }
 
+Player.image = new Image('images/player.png', 'red');
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
@@ -287,9 +288,10 @@ Enemy.prototype.update = function (ms) {
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
     Enemy.call(this, layer, x, y, 43, 58, 0.065, 110, [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, 30 * 20 + 90 * 20 * Math.random())]);
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'gray')];
+    this.elements = [Straight.image];
 }
 
+Straight.image = new Image('images/straight.png', 'gray');
 Straight.prototype = Object.create(Enemy.prototype);
 
 function OmniGun(layer, host, x, y, warmupPeriod) {
@@ -309,9 +311,10 @@ function Omni(layer, x, y) {
     ]);
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'brown')];
+    this.elements = [Omni.image];
 }
 
+Omni.image = new Image('images/omni.png', 'brown');
 Omni.prototype = Object.create(Enemy.prototype);
 
 Omni.prototype.updateTargetLocation = function (ms) {
@@ -328,15 +331,15 @@ Omni.prototype.updateTargetLocation = function (ms) {
 };
 
 function RayGun(layer, x, y) {
-    // TODO: This enemy's gun should only fire when near the player
     Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000, [new Gun(layer, this, 0, -14, 20, 0, RayGunShot, 0)]);
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'purple')];
+    this.elements = [RayGun.image];
     this.timer = 0;
     this.movementFactor = 0.5 + Math.random() / 2;
     this.lastMoveX = 0;
     this.lastMoveY = 0;
 }
 
+RayGun.image = new Image('images/rayGun.png', 'purple');
 RayGun.prototype = Object.create(Enemy.prototype);
 
 RayGun.prototype.updateTargetLocation = function (ms) {
@@ -413,7 +416,7 @@ function Boss0(layer, x, y) {
     this.straightCounter = 0;
     this.ammoSpeed = 0.5;
     this.omniV = [0, -this.ammoSpeed];
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'cyan')];
+    this.elements = [Boss0.image];
 
     // Use boss's aim for omni shots
     var boss = this;
@@ -430,6 +433,7 @@ function Boss0(layer, x, y) {
     this.tankGuns[1].speed = 2 * this.ammoSpeed;
 }
 
+Boss0.image = new Image('images/boss0.png', 'cyan');
 Boss0.prototype = Object.create(Enemy.prototype);
 
 Boss0.prototype.updateGuns = function (ms) {
@@ -631,7 +635,7 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 };
 
-Level.prototype.addRayGunWave = function (start, duration, density) {
+Level.prototype.addRayGunWave = function (start, duration) {
     var end = start + duration;
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
 };
