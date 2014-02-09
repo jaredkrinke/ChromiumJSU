@@ -629,11 +629,11 @@ Level.prototype.addRayGunWave = function (start, duration, density) {
 
 Level.prototype.addBoss0Wave = function (start, duration) {
     var end = start + duration;
-    this.addWave(Boss0, start, end, 0, 426, 5000, 0, 4);
+    this.addWave(Boss0, start, end, 0, 426, 5000 * 20, 0, 4);
 };
 
+// TODO: xRand and xJitter are actually two names for the same thing; converge these
 Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency, fJitter, xRand, xJitter, formation) {
-    var interval = 1;
     var iteration = 0;
     waveX = (waveX === undefined ? 0 : waveX);
     waveY = (waveY === undefined ? 284 : waveY);
@@ -659,8 +659,8 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
                 break;
         }
 
-        t += frequency + fJitter * (Math.random() * 2 - 1);
         this.queue.insert(new LevelAction(factory, t, x, waveY));
+        t += frequency + fJitter * (Math.random() * 2 - 1);
     }
 };
 
@@ -916,6 +916,7 @@ GameLayer.prototype.updateGame = function (ms) {
 // TODO: Where should this code go?
 GameLayer.prototype.loadLevel1 = function (layer) {
     var totalTime = 12000 * 20;
+    var totalTime = 50 * 20;
     var waveDuration = 500;
     time = 600 * 20;
     var waves = [];
