@@ -1,16 +1,23 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Shot(x, y, width, height, vx, vy, damage, permanent) {
+function Shot(x, y, image, width, height, vx, vy, damage, permanent) {
     Entity.call(this, x, y, width, height);
     this.vx = vx;
     this.vy = vy;
     this.damage = damage;
     this.permanent = permanent;
-    // TODO: Images
-    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'yellow')];
+
+    var imageElement = Shot.images[image];
+    if (!imageElement) {
+        imageElement = new Image(image, 'yellow');
+        Shot.images[image] = imageElement;
+    }
+
+    this.elements = [imageElement];
 }
 
+Shot.images = {};
 Shot.prototype = Object.create(Entity.prototype);
 
 Shot.prototype.update = function (ms) {
@@ -19,44 +26,44 @@ Shot.prototype.update = function (ms) {
 };
 
 function Bullet(x, y) {
-    Shot.call(this, x, y, 3, 37, 0, 0.71, 3.5);
+    Shot.call(this, x, y, 'images/bullet.png', 3, 18, 0, 0.71, 3.5);
 }
 
 Bullet.prototype = Object.create(Shot.prototype);
 
 function Plasma(x, y) {
-    Shot.call(this, x, y, 3, 43, 0, 0.28, 6, true);
+    Shot.call(this, x, y, 'images/plasma.png', 6, 43, 0, 0.28, 6, true);
 }
 
 Plasma.prototype = Object.create(Shot.prototype);
 
 function Emp(x, y) {
-    Shot.call(this, x, y, 9, 43, 0, 0.43, 40);
+    Shot.call(this, x, y, 'images/emp.png', 17, 43, 0, 0.43, 40);
 }
 
 Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
-    Shot.call(this, x, y, 7, 16, 0, -0.28, 75);
+    Shot.call(this, x, y, 'images/straightShot.png', 14, 31, 0, -0.28, 75);
 }
 
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
     // TODO: Make it so that the elements get rotated based on direction
-    Shot.call(this, x, y, 6, 6, vx, vy, 6);
+    Shot.call(this, x, y, 'images/omniShot.png', 13, 13, vx, vy, 6);
 }
 
 OmniShot.prototype = Object.create(Shot.prototype);
 
 function RayGunShot(x, y) {
-    Shot.call(this, x, y, 9, 14, 0, -0.85, 20);
+    Shot.call(this, x, y, 'images/rayGunShot.png', 17, 28, 0, -0.85, 20);
 }
 
 RayGunShot.prototype = Object.create(Shot.prototype);
 
 function TankShot(x, y) {
-    Shot.call(this, x, y, 13, 13, 0, -1, 100);
+    Shot.call(this, x, y, 'images/tankShot.png', 26, 26, 0, -1, 100);
 }
 
 TankShot.prototype = Object.create(Shot.prototype);
