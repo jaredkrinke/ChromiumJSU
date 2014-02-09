@@ -3,12 +3,12 @@ Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
 
 For alpha:
+Add images
 Add power-ups/ammunition
 Add explosions
 
 For beta 1:
 Complete more levels
-Add images
 Add explosions
 Add UI
 Add keyboard controls
