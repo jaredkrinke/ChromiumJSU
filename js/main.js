@@ -163,7 +163,7 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, 40, 48, 50000);
+    Ship.call(this, layer, 0, 0, 40, 48, 500);
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'red')];
     this.guns = [
         // Default machine gun
@@ -917,7 +917,6 @@ GameLayer.prototype.updateGame = function (ms) {
 // TODO: Where should this code go?
 GameLayer.prototype.loadLevel1 = function (layer) {
     var totalTime = 12000 * 20;
-    var totalTime = 50 * 20;
     var waveDuration = 500;
     time = 600 * 20;
     var waves = [];
