@@ -472,6 +472,7 @@ RayGun.prototype.updateGuns = function (ms) {
 };
 
 function Boss0(layer, x, y) {
+    // Create guns
     this.rayGun = new Gun(layer, this, 0, -48, 20, 0, RayGunShot);
     this.straightGuns = [
         new Gun(layer, this, 57, -54, 3 * 20, 0, StraightShot),
@@ -491,7 +492,25 @@ function Boss0(layer, x, y) {
     ];
     var guns = [this.rayGun];
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
-    Enemy.call(this, layer, x, y, 199, 129, 0.028, 10000, guns);
+
+    // Create explosion sequence
+    var width = 199;
+    var height = 129;
+    var explosions = [];
+    var explosionDuration = 1500;
+    var explosionFrequency = 5;
+
+    explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
+
+    for (var i = 0; i < explosionDuration; i += explosionFrequency) {
+        var size = (Math.random() / 2 + 0.5) * width;
+        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
+
+        // Decrease frequency over time
+        explosionFrequency *= 1.1;
+    }
+
+    Enemy.call(this, layer, x, y, width, height, 0.028, /*10000*/ 10, guns, new ExplosionSequence(explosions));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;

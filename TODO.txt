@@ -4,7 +4,7 @@ Moving the mouse outside the canvas doesn't affect movement
 Shot durations weren't set correctly
 
 For alpha:
-Add boss explosion
+Add player explosion
 Add weapon flashes
 Add power-ups/ammunition
 
