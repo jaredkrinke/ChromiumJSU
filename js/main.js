@@ -238,7 +238,7 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, 40, 48, 500);
+    Ship.call(this, layer, 0, 0, 40, 48, 5, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.elements = [Player.image];
     this.guns = [
         // Default machine gun
@@ -806,6 +806,7 @@ function GameLayer() {
     Layer.call(this);
     this.addEntity(new Master(this));
     this.player = this.addEntity(new Player(this));
+    // TODO: These need to be locking lists
     this.playerShots = [];
     this.enemies = [];
     this.enemyShots = [];
@@ -1036,6 +1037,12 @@ GameLayer.prototype.updateGame = function (ms) {
     // Check for loss
     if (this.player.health <= 0) {
         this.removeEntity(this.player);
+
+        // Add explosion
+        var template = this.player.explosionTemplate;
+        if (template) {
+            template.instantiate(this, this.player.x, this.player.y);
+        }
     }
 
     // Add new enemies according to the level
