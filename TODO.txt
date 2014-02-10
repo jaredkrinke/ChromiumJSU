@@ -1,15 +1,17 @@
 ﻿Bugs:
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
+Shot durations weren't set correctly
 
 For alpha:
-Add ship explosions
+Add boss explosion
 Add weapon flashes
 Add power-ups/ammunition
 
 For beta 1:
+Sound
 Complete more levels
-Add other special effects
+Add other special effects (boss damage, etc.)
 Add UI
 Add keyboard controls
 Add ground

@@ -7,8 +7,10 @@ function Explosion(image, x, y, width, height, duration, delay) {
     this.originalWidth = width;
     this.originalHeight = height;
     this.timer = delay ? -delay : 0;
-    // TODO: Images
     this.elements = [image];
+
+    // Make sure opacity gets set initially
+    this.update(0);
 }
 
 Explosion.prototype = Object.create(Entity.prototype);
@@ -26,6 +28,8 @@ Explosion.prototype.update = function (ms) {
         if (this.timer > this.duration) {
             this.dead = true;
         }
+    } else {
+        this.opacity = 0;
     }
 };
 
@@ -37,9 +41,25 @@ function ExplosionTemplate(image, width, height, duration, delay) {
     this.delay = delay;
 }
 
-ExplosionTemplate.prototype.instantiate = function (x, y) {
-    return new Explosion(this.image, x, y, this.width, this.height, this.duration, this.delay);
+ExplosionTemplate.prototype.instantiate = function (layer, x, y) {
+    layer.addEntity(new Explosion(this.image, x, y, this.width, this.height, this.duration, this.delay));
 };
+
+function ExplosionSequence(explosions) {
+    this.explosions = explosions;
+}
+
+ExplosionSequence.prototype.instantiate = function (layer, x, y) {
+    var count = this.explosions.length;
+    for (var i = 0; i < count; i++) {
+        // Each item is an array: ExplosionTemplate, [offsetX], [offsetY]
+        var explosion = this.explosions[i];
+        var template = explosion[0];
+        var offsetX = explosion[1] || 0;
+        var offsetY = explosion[2] || 0;
+        template.instantiate(layer, x + offsetX, y + offsetY);
+    }
+}
 
 function Shot(x, y, image, width, height, vx, vy, damage, explosionTemplate, permanent) {
     Entity.call(this, x, y, width, height);
@@ -186,10 +206,11 @@ Gun.prototype.update = function (ms) {
     }
 };
 
-function Ship(layer, x, y, width, height, health) {
+function Ship(layer, x, y, width, height, health, explosionTemplate) {
     Entity.call(this, x, y, width, height);
     this.layer = layer;
     this.health = health;
+    this.explosionTemplate = explosionTemplate;
     this.targetX = x;
     this.targetY = y;
     this.offsetX = 0;
@@ -282,8 +303,8 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(layer, x, y, width, height, speed, health, guns) {
-    Ship.call(this, layer, x, y, width, height, health);
+function Enemy(layer, x, y, width, height, speed, health, guns, explosionTemplate) {
+    Ship.call(this, layer, x, y, width, height, health, explosionTemplate);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
@@ -292,6 +313,7 @@ function Enemy(layer, x, y, width, height, speed, health, guns) {
 }
 
 Enemy.boundX = 256;
+Enemy.explosionImage = new Image('images/enemyExplosion.png', 'orange');
 Enemy.prototype = Object.create(Ship.prototype);
 
 Enemy.prototype.updateTargetLocation = function (ms) {
@@ -333,7 +355,12 @@ Enemy.prototype.update = function (ms) {
 // TODO: Random factor?
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110, [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, 30 * 20 + 90 * 20 * Math.random())]);
+    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110,
+        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, 30 * 20 + 90 * 20 * Math.random())],
+        new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
+        ]));
     this.elements = [Straight.image];
 }
 
@@ -354,13 +381,18 @@ function Omni(layer, x, y) {
         new OmniGun(layer, this, 0, 0, 0),
         new OmniGun(layer, this, 0, 0, 6 * 20),
         new OmniGun(layer, this, 0, 0, 12 * 20)
-    ]);
+    ], new ExplosionSequence([
+        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
+        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
+        [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
+    ]));
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
 }
 
 Omni.image = new Image('images/omni.png', 'brown');
+Omni.explosionImage = new Image('images/omniExplosion.png', 'gray');
 Omni.prototype = Object.create(Enemy.prototype);
 
 Omni.prototype.updateTargetLocation = function (ms) {
@@ -377,7 +409,15 @@ Omni.prototype.updateTargetLocation = function (ms) {
 };
 
 function RayGun(layer, x, y) {
-    Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000, [new Gun(layer, this, 0, -14, 20, 0, RayGunShot, 0)]);
+    Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000,
+        [new Gun(layer, this, 0, -14, 20, 0, RayGunShot, 0)],
+        new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 30 * 20)]
+        ]));
     this.elements = [RayGun.image];
     this.timer = 0;
     this.movementFactor = 0.5 + Math.random() / 2;
@@ -885,7 +925,7 @@ GameLayer.prototype.updateGame = function (ms) {
 
                     // Add explosion
                     // TODO: Permanent shots (plasma) should add explosions on a timer...
-                    this.addEntity(shot.explosionTemplate.instantiate(shot.x, shot.y));
+                    shot.explosionTemplate.instantiate(this, shot.x, shot.y);
                 }
             }
         }
@@ -919,7 +959,7 @@ GameLayer.prototype.updateGame = function (ms) {
                 remove = true;
 
                 // Add explosion
-                this.addEntity(shot.explosionTemplate.instantiate(shot.x, shot.y));
+                shot.explosionTemplate.instantiate(this, shot.x, shot.y);
             }
         }
 
@@ -941,8 +981,13 @@ GameLayer.prototype.updateGame = function (ms) {
             remove = true;
         } else if (enemy.health <= 0) {
             // Destroyed
-            // TODO: Explosion
             remove = true;
+
+            // Add explosion
+            var template = enemy.explosionTemplate;
+            if (template) {
+                template.instantiate(this, enemy.x, enemy.y);
+            }
         } else if (this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
             // TODO: Move to helper on Player?
             var damage = Math.min(35, enemy.health / 2);
