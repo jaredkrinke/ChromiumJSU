@@ -1,12 +1,12 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Explosion(image, x, y, width, height, duration) {
+function Explosion(image, x, y, width, height, duration, delay) {
     Entity.call(this, x, y, width, height);
     this.duration = duration;
     this.originalWidth = width;
     this.originalHeight = height;
-    this.timer = 0;
+    this.timer = delay ? -delay : 0;
     // TODO: Images
     this.elements = [image];
 }
@@ -15,27 +15,31 @@ Explosion.prototype = Object.create(Entity.prototype);
 
 Explosion.prototype.update = function (ms) {
     this.timer += ms;
+    if (this.timer >= 0) {
+        // Update size and opacity
+        var sizeFactor = Math.min(1, (this.timer + 100) / (this.duration + 100));
+        this.width = sizeFactor * this.originalWidth;
+        this.height = sizeFactor * this.originalHeight;
+        this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
 
-    // Update size and opacity
-    var sizeFactor = Math.min(1, (this.timer + 100) / (this.duration + 100));
-    this.width = sizeFactor * this.originalWidth;
-    this.height = sizeFactor * this.originalHeight;
-    this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
-
-    // Flag for removal if done
-    if (this.timer >= this.duration) {
-        this.dead = true;
+        // Flag for removal if done
+        if (this.timer > this.duration) {
+            this.dead = true;
+        }
     }
 };
 
-function ExplosionTemplate(image, width, height, duration) {
-    return {
-        image: image,
-        width: width,
-        height: height,
-        duration: duration
-    };
+function ExplosionTemplate(image, width, height, duration, delay) {
+    this.image = image;
+    this.width = width;
+    this.height = height;
+    this.duration = duration;
+    this.delay = delay;
 }
+
+ExplosionTemplate.prototype.instantiate = function (x, y) {
+    return new Explosion(this.image, x, y, this.width, this.height, this.duration, this.delay);
+};
 
 function Shot(x, y, image, width, height, vx, vy, damage, explosionTemplate, permanent) {
     Entity.call(this, x, y, width, height);
@@ -881,8 +885,7 @@ GameLayer.prototype.updateGame = function (ms) {
 
                     // Add explosion
                     // TODO: Permanent shots (plasma) should add explosions on a timer...
-                    var template = shot.explosionTemplate;
-                    this.addEntity(new Explosion(template.image, shot.x, shot.y, template.width, template.height, template.duration));
+                    this.addEntity(shot.explosionTemplate.instantiate(shot.x, shot.y));
                 }
             }
         }
@@ -916,8 +919,7 @@ GameLayer.prototype.updateGame = function (ms) {
                 remove = true;
 
                 // Add explosion
-                var template = shot.explosionTemplate;
-                this.addEntity(new Explosion(template.image, shot.x, shot.y, template.width, template.height, template.duration));
+                this.addEntity(shot.explosionTemplate.instantiate(shot.x, shot.y));
             }
         }
 
