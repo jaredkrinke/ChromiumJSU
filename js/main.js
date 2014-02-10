@@ -1,17 +1,52 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Shot(x, y, image, width, height, vx, vy, damage, permanent) {
+function Explosion(image, x, y, width, height, duration) {
+    Entity.call(this, x, y, width, height);
+    this.duration = duration;
+    this.originalWidth = width;
+    this.originalHeight = height;
+    this.timer = 0;
+    // TODO: Images
+    this.elements = [image];
+}
+
+Explosion.prototype = Object.create(Entity.prototype);
+
+Explosion.prototype.update = function (ms) {
+    this.timer += ms;
+
+    // Update size and opacity
+    var sizeFactor = Math.min(1, (this.timer + 100) / (this.duration + 100));
+    this.width = sizeFactor * this.originalWidth;
+    this.height = sizeFactor * this.originalHeight;
+    this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
+
+    // Flag for removal if done
+    if (this.timer >= this.duration) {
+        this.dead = true;
+    }
+};
+
+function ExplosionTemplate(image, width, height, duration) {
+    return {
+        image: image,
+        width: width,
+        height: height,
+        duration: duration
+    };
+}
+
+function Shot(x, y, image, width, height, vx, vy, damage, explosionTemplate, permanent) {
     Entity.call(this, x, y, width, height);
     this.vx = vx;
     this.vy = vy;
     this.damage = damage;
+    this.explosionTemplate = explosionTemplate;
     this.permanent = permanent;
-
     this.elements = [image];
 }
 
-Shot.images = {};
 Shot.prototype = Object.create(Entity.prototype);
 
 Shot.prototype.update = function (ms) {
@@ -20,53 +55,60 @@ Shot.prototype.update = function (ms) {
 };
 
 function Bullet(x, y) {
-    Shot.call(this, x, y, Bullet.image, 3, 18, 0, 0.71, 3.5);
+    Shot.call(this, x, y, Bullet.image, 3, 18, 0, 0.71, 3.5, new ExplosionTemplate(Bullet.explosionImage, 14, 14, 10 * 20));
 }
 
 Bullet.image = new Image('images/bullet.png', 'yellow');
+Bullet.explosionImage = new Image('images/bulletExplosion.png', 'orange');
 Bullet.prototype = Object.create(Shot.prototype);
 
 function Plasma(x, y) {
-    Shot.call(this, x, y, Plasma.image, 6, 43, 0, 0.28, 6, true);
+    Shot.call(this, x, y, Plasma.image, 6, 43, 0, 0.28, 6, new ExplosionTemplate(Plasma.explosionImage, 28, 57, 10 * 20), true);
 }
 
 Plasma.image = new Image('images/plasma.png', 'yellow');
+Plasma.explosionImage = new Image('images/plasmaExplosion.png', 'orange');
 Plasma.prototype = Object.create(Shot.prototype);
 
 function Emp(x, y) {
-    Shot.call(this, x, y, Emp.image, 17, 43, 0, 0.43, 40);
+    Shot.call(this, x, y, Emp.image, 17, 43, 0, 0.43, 40, new ExplosionTemplate(Emp.explosionImage, 51, 57, 10 * 20));
 }
 
 Emp.image = new Image('images/emp.png', 'yellow');
+Emp.explosionImage = new Image('images/empExplosion.png', 'orange');
 Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
-    Shot.call(this, x, y, StraightShot.image, 14, 31, 0, -0.28, 75);
+    Shot.call(this, x, y, StraightShot.image, 14, 31, 0, -0.28, 75, new ExplosionTemplate(StraightShot.explosionImage, 85, 85, 10 * 20));
 }
 
 StraightShot.image = new Image('images/straightShot.png', 'yellow');
+StraightShot.explosionImage = new Image('images/straightShotExplosion.png', 'orange');
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
     // TODO: Make it so that the elements get rotated based on direction
-    Shot.call(this, x, y, OmniShot.image, 13, 13, vx, vy, 6);
+    Shot.call(this, x, y, OmniShot.image, 13, 13, vx, vy, 6, new ExplosionTemplate(OmniShot.explosionImage, 28, 28, 10 * 20));
 }
 
 OmniShot.image = new Image('images/omniShot.png', 'yellow');
+OmniShot.explosionImage = new Image('images/omniShotExplosion.png', 'orange');
 OmniShot.prototype = Object.create(Shot.prototype);
 
 function RayGunShot(x, y) {
-    Shot.call(this, x, y, RayGunShot.image, 17, 28, 0, -0.85, 20);
+    Shot.call(this, x, y, RayGunShot.image, 17, 28, 0, -0.85, 20, new ExplosionTemplate(RayGunShot.explosionImage, 97, 97, 10 * 20));
 }
 
 RayGunShot.image = new Image('images/rayGunShot.png', 'yellow');
+RayGunShot.explosionImage = new Image('images/rayGunShotExplosion.png', 'orange');
 RayGunShot.prototype = Object.create(Shot.prototype);
 
 function TankShot(x, y) {
-    Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100);
+    Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
 }
 
 TankShot.image = new Image('images/tankShot.png', 'yellow');
+TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
 function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
@@ -716,6 +758,7 @@ GameLayer.prototype.reset = function () {
     this.clearPlayerShots();
     this.clearEnemies();
     this.clearEnemyShots();
+    // TODO: Remove all entities (so that special effects get removed)
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
 
@@ -835,6 +878,11 @@ GameLayer.prototype.updateGame = function (ms) {
                         enemy.health -= shot.damage;
                         remove = true;
                     }
+
+                    // Add explosion
+                    // TODO: Permanent shots (plasma) should add explosions on a timer...
+                    var template = shot.explosionTemplate;
+                    this.addEntity(new Explosion(template.image, shot.x, shot.y, template.width, template.height, template.duration));
                 }
             }
         }
@@ -866,6 +914,10 @@ GameLayer.prototype.updateGame = function (ms) {
                 // TODO: Shields
                 this.player.takeDamage(shot);
                 remove = true;
+
+                // Add explosion
+                var template = shot.explosionTemplate;
+                this.addEntity(new Explosion(template.image, shot.x, shot.y, template.width, template.height, template.duration));
             }
         }
 

@@ -319,6 +319,7 @@ Layer.prototype = {
             }
 
             // Update entities
+            var layer = this;
             this.entities.forEach(function (child) {
                 if (child.update) {
                     child.update(ms);
@@ -326,7 +327,7 @@ Layer.prototype = {
 
                 // Check to see if this child should be removed
                 if (child.dead) {
-                    this.removeEntity(child);
+                    layer.removeEntity(child);
                 }
             });
         }
