@@ -425,11 +425,12 @@ Spinner.prototype.update = function (ms) {
 
 function Omni(layer, x, y) {
     // TODO: Mass
-    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, [
-        new OmniGun(layer, this, 0, 0, 0),
-        new OmniGun(layer, this, 0, 0, 6 * 20),
-        new OmniGun(layer, this, 0, 0, 12 * 20)
-    ], new ExplosionSequence([
+    var guns = [];
+    for (var i = 0; i < 18; i++) {
+        guns.push(new OmniGun(layer, this, 0, 0, i * 20));
+    }
+
+    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, guns, new ExplosionSequence([
         [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
         [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
         [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]

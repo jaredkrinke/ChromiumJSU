@@ -2,7 +2,6 @@
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
 Tank shot image needs to have correct transparency
-Omnis should shoot multiple shots, not just one
 
 For alpha 1:
 Fix bugs
