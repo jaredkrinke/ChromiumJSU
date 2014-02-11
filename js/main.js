@@ -84,6 +84,7 @@ function Bullet(x, y) {
 
 Bullet.image = new Image('images/bullet.png', 'yellow');
 Bullet.explosionImage = new Image('images/bulletExplosion.png', 'orange');
+Bullet.flashImage = new Image('images/bulletFlash.png', 'orange');
 Bullet.prototype = Object.create(Shot.prototype);
 
 function Plasma(x, y) {
@@ -92,6 +93,7 @@ function Plasma(x, y) {
 
 Plasma.image = new Image('images/plasma.png', 'yellow');
 Plasma.explosionImage = new Image('images/plasmaExplosion.png', 'orange');
+Plasma.flashImage = new Image('images/plasmaFlash.png', 'green');
 Plasma.prototype = Object.create(Shot.prototype);
 
 function Emp(x, y) {
@@ -100,6 +102,7 @@ function Emp(x, y) {
 
 Emp.image = new Image('images/emp.png', 'yellow');
 Emp.explosionImage = new Image('images/empExplosion.png', 'orange');
+Emp.flashImage = new Image('images/empFlash.png', 'blue');
 Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
@@ -135,7 +138,7 @@ TankShot.image = new Image('images/tankShot.png', 'yellow');
 TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
-function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
+function Gun(layer, host, x, y, period, periodRandomMax, shot, flashTemplate, warmupPeriod) {
     this.layer = layer;
     this.host = host;
     this.x = x;
@@ -143,6 +146,7 @@ function Gun(layer, host, x, y, period, periodRandomMax, shot, warmupPeriod) {
     this.period = period;
     this.periodRandomMax = periodRandomMax;
     this.shot = shot;
+    this.flashTemplate = flashTemplate;
     this.warmupPeriod = warmupPeriod || 0;
     this.reset();
 }
@@ -196,6 +200,11 @@ Gun.prototype.fire = function () {
     } else {
         this.layer.addEnemyShot(shot);
     }
+
+    // Add a flash, if provided
+    if (this.flashTemplate) {
+        this.flashTemplate.instantiate(this.layer, this.host.x + this.x, this.host.y + this.y);
+    }
 };
 
 Gun.prototype.update = function (ms) {
@@ -242,19 +251,19 @@ function Player(layer) {
     this.elements = [Player.image];
     this.guns = [
         // Default machine gun
-        new Gun(layer, this, 8, 23, 100, 0, Bullet),
-        new Gun(layer, this, -8, 23, 100, 0, Bullet),
+        new Gun(layer, this, 8, 23, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
+        new Gun(layer, this, -8, 23, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
 
         // Extra machine gun
-        new Gun(layer, this, 13, 17, 100, 0, Bullet),
-        new Gun(layer, this, -13, 17, 100, 0, Bullet),
+        new Gun(layer, this, 13, 17, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
+        new Gun(layer, this, -13, 17, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
 
         // Plasma
-        new Gun(layer, this, 0, 31, 500, 0, Plasma),
+        new Gun(layer, this, 0, 31, 500, 0, Plasma, new ExplosionTemplate(Plasma.flashImage, 28, 28, 10 * 20)),
 
         // EMP
-        new Gun(layer, this, -20, 11, 200, 0, Emp),
-        new Gun(layer, this, 20, 11, 200, 0, Emp, 100)
+        new Gun(layer, this, -20, 11, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20)),
+        new Gun(layer, this, 20, 11, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
     ];
 }
 
@@ -356,7 +365,7 @@ Enemy.prototype.update = function (ms) {
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
     Enemy.call(this, layer, x, y, 43, 58, 0.065, 110,
-        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, 30 * 20 + 90 * 20 * Math.random())],
+        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random())],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
@@ -368,7 +377,7 @@ Straight.image = new Image('images/straight.png', 'gray');
 Straight.prototype = Object.create(Enemy.prototype);
 
 function OmniGun(layer, host, x, y, warmupPeriod) {
-    Gun.call(this, layer, host, x, y, 108 * 20, 0, OmniShot, warmupPeriod);
+    Gun.call(this, layer, host, x, y, 108 * 20, 0, OmniShot, undefined, warmupPeriod);
     this.speed = 0.5;
 }
 
@@ -410,7 +419,7 @@ Omni.prototype.updateTargetLocation = function (ms) {
 
 function RayGun(layer, x, y) {
     Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000,
-        [new Gun(layer, this, 0, -14, 20, 0, RayGunShot, 0)],
+        [new Gun(layer, this, 0, -14, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
