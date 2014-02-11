@@ -252,12 +252,12 @@ function Player(layer) {
     this.elements = [Player.image];
     this.guns = [
         // Default machine gun
-        new Gun(layer, this, 8, 14, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
-        new Gun(layer, this, -8, 14, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
+        new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(layer, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
 
         // Extra machine gun
-        new Gun(layer, this, 13, -3, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
-        new Gun(layer, this, -13, -3, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 5 * 20)),
+        new Gun(layer, this, 14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(layer, this, -14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
 
         // Plasma
         new Gun(layer, this, 0, 10, 500, 0, Plasma, new ExplosionTemplate(Plasma.flashImage, 28, 28, 10 * 20)),
