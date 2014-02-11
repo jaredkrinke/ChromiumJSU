@@ -1,10 +1,12 @@
 ﻿Bugs:
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
+Straight shot flash should actually charge up before the shot, not after
 
 For alpha:
 Add weapon flashes
 Add power-ups/ammunition
+Add "don't let enemies through" logic
 
 For beta 1:
 Sound

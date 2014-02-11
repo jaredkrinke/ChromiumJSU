@@ -111,6 +111,7 @@ function StraightShot(x, y) {
 
 StraightShot.image = new Image('images/straightShot.png', 'yellow');
 StraightShot.explosionImage = new Image('images/straightShotExplosion.png', 'orange');
+StraightShot.flashImage = new Image('images/straightShotFlash.png', 'red');
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
@@ -364,8 +365,9 @@ Enemy.prototype.update = function (ms) {
 // TODO: Random factor?
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
+    // TODO: Really the flash is more of a "charge up" (i.e. before the shot is fired)... accommodate that instead?
     Enemy.call(this, layer, x, y, 43, 58, 0.065, 110,
-        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random())],
+        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, new ExplosionTemplate(StraightShot.flashImage, 16, 16, 10 * 20), 30 * 20 + 90 * 20 * Math.random())],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
