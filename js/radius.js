@@ -569,6 +569,7 @@ function ScriptedEntity(entityOrElements, steps, repeat, endedCallback) {
     this.opacity = steps[0][6];
 }
 
+// TODO: These aren't always used, so consider moving them to a library file or something
 ScriptedEntity.prototype = Object.create(Entity.prototype);
 
 ScriptedEntity.prototype.update = function (ms) {
