@@ -5,7 +5,7 @@ Tank shot image needs to have correct transparency
 Omnis should shoot multiple shots, not just one
 
 For alpha 1:
-Add ground special effects
+Fix bugs
 
 For alpha 2:
 Add power-ups/ammunition

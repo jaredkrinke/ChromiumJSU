@@ -670,44 +670,62 @@ Boss0.prototype.updateTargetLocation = function (ms) {
     // TODO: Bounds?
 };
 
-function GroundSegment(x, y, width, height) {
+var GroundTemplates = {
+    metal: {
+        image: new Image('images/groundMetal.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
+    metalHighlight: {
+        image: new Image('images/groundMetalHighlight.png', 'DarkRed'),
+        segmentWidth: 640,
+        segmentHeight: 480,
+        vy: -0.064
+    }
+}
+
+function GroundSegment(template, x, y, width, height) {
     Entity.call(this, x, y, width, height);
-    this.elements = [GroundSegment.image];
+    this.template = template;
+    this.elements = [template.image];
 }
 
 // TODO: Make sure that portrait resolution doesn't draw extra ground on the top and bottom!
-GroundSegment.image = new Image('images/groundMetal.png', 'DarkGray');
-GroundSegment.segmentWidth = 320;
-GroundSegment.segmentHeight = 320;
-GroundSegment.vy = -0.048;
 GroundSegment.prototype = Object.create(Entity.prototype);
 
 GroundSegment.prototype.update = function (ms) {
-    this.y += GroundSegment.vy * ms;
-    if (this.y <= -240 - GroundSegment.segmentHeight / 2) {
-        this.y += 480 + GroundSegment.segmentHeight;
+    this.y += this.template.vy * ms;
+    if (this.y <= -240 - this.template.segmentHeight / 2) {
+        this.y += 480 + this.template.segmentHeight;
     }
 };
 
-function Ground(segment) {
+function Ground(template) {
     Entity.call(this);
     this.children = [];
 
     var scaleY = 1;
     var screenHeight = 480;
     var y = -screenHeight / 2;
-    var rows = Math.ceil(screenHeight / segment.segmentHeight) + 1;
+    var rows = Math.ceil(screenHeight / template.segmentHeight) + 1;
+
+    var screenWidth = 640;
+    var columns = Math.ceil(screenWidth / template.segmentWidth);
+
     for (var i = 0; i < rows; i++) {
         var scaleX = 1;
-        // TODO: Allow horizontal tiling?
-        for (var j = 0; j < 2; j++) {
-            this.children.push(new segment(-scaleX * segment.segmentWidth / 2, y + segment.segmentHeight / 2, scaleX * segment.segmentWidth, scaleY * segment.segmentHeight));
+        var x = -screenWidth / 2 + template.segmentWidth / 2;
+        for (var j = 0; j < columns; j++) {
+            this.children.push(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
             scaleX = -scaleX;
+            x += template.segmentWidth;
         }
 
         // Flip the next row
         scaleY = -scaleY;
-        y += segment.segmentHeight;
+        y += template.segmentHeight;
     }
 }
 
@@ -903,7 +921,8 @@ Master.prototype.update = function (ms) {
 function GameLayer() {
     Layer.call(this);
     this.addEntity(new Master(this));
-    this.ground = this.addEntity(new Ground(GroundSegment));
+    this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
+    this.ground = this.addEntity(new Ground(GroundTemplates.metal));
     this.player = this.addEntity(new Player(this));
     this.playerShots = [];
     this.enemies = [];
