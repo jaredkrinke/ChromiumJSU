@@ -457,12 +457,13 @@ function Rectangle(x, y, width, height, color) {
     this.color = color;
 }
 
-function Image(source, color, x, y, width, height) {
+function Image(source, color, x, y, width, height, opacity) {
     this.x = (x !== undefined ? x : -0.5);
     this.y = (y !== undefined ? y : 0.5);
     this.width = width || 1;
     this.height = height || 1;
     this.color = color;
+    this.opacity = opacity;
     this.loaded = false;
 
     // Load the image

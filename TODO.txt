@@ -4,9 +4,8 @@ Moving the mouse outside the canvas doesn't affect movement
 Tank shot image needs to have correct transparency
 
 For alpha:
-Add other enemy special effects
 Add power-ups/ammunition
-Add "don't let enemies through" logic
+Add "don't let enemies through" logic/text
 
 For beta 1:
 Sound

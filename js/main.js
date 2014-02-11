@@ -263,8 +263,8 @@ Ship.prototype.updateOffsets = function (ms) {
 
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
-    this.elements = [Player.image];
-    this.children = [
+    this.elements = [Player.image, Player.exhaustImage];
+    this.guns = [
         // Default machine gun
         new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
         new Gun(layer, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
@@ -280,27 +280,32 @@ function Player(layer) {
         new Gun(layer, this, -20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20)),
         new Gun(layer, this, 20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
     ];
+
+    this.children = this.guns.slice();
 }
 
 Player.shipWidth = 40;
 Player.shipHeight = 48;
 Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Player.shipHeight / 2, Player.shipWidth, Player.shipHeight);
+Player.exhaustWidth = 37;
+Player.exhaustHeight = 37;
+Player.exhaustImage = new Image('images/empFlash.png', 'blue', -Player.exhaustWidth / 2, Player.exhaustHeight / 2 - 18, Player.exhaustWidth, Player.exhaustHeight, 0.7);
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
 
 Player.prototype.reset = function () {
-    var count = this.children.length;
+    var count = this.guns.length;
     for (var i = 0; i < count; i++) {
-        this.children[i].reset();
+        this.guns[i].reset();
     }
 };
 
 // TODO: Keyboard/touch controls
 Player.prototype.setFiring = function (firing) {
-    var count = this.children.length;
+    var count = this.guns.length;
     for (var i = 0; i < count; i++) {
-        this.children[i].setFiring(firing);
+        this.guns[i].setFiring(firing);
     }
 };
 
