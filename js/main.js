@@ -1022,6 +1022,11 @@ GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
     }
 };
 
+GameLayer.prototype.mouseOut = function () {
+    // Stop firing if the mouse left the canvas
+    this.player.setFiring(false);
+};
+
 GameLayer.prototype.checkShotCollision = function (shot, b) {
     var bw = b.shipWidth / 2;
     var bh = b.shipHeight / 2;

@@ -702,7 +702,8 @@ function KeySerializer() {
 var MouseEvent = {
     down: 1,
     up: 2,
-    move: 3
+    move: 3,
+    out: 4
 };
 
 var MouseButton = {
@@ -739,7 +740,13 @@ function MouseSerializer(canvas) {
         queuedMousePayloads.push([e.clientX, e.clientY]);
     });
 
-    this.process = function (mouseButtonPressed, mouseMoved) {
+    canvas.addEventListener('mouseout', function (e) {
+        disableDefault(e);
+        queuedMouseEvents.push(MouseEvent.out);
+        queuedMousePayloads.push([]);
+    });
+
+    this.process = function (mouseButtonPressed, mouseMoved, mouseOut) {
         var count = queuedMouseEvents.length;
         if (count > 0) {
             for (var i = 0; i < count; i++) {
@@ -753,6 +760,10 @@ function MouseSerializer(canvas) {
 
                     case MouseEvent.move:
                         mouseMoved(payload[0], payload[1]);
+                        break;
+
+                    case MouseEvent.out:
+                        mouseOut();
                         break;
                 }
             }
@@ -868,6 +879,7 @@ var Radius = new function () {
 
             var mouseButtonPressed = activeLayer.mouseButtonPressed;
             var mouseMoved = activeLayer.mouseMoved;
+            var mouseOut = activeLayer.mouseOut;
 
             // TODO: This could be cached and should also share code with the canvas 
             // TODO: The API here is ugly...
@@ -892,6 +904,10 @@ var Radius = new function () {
                     var canvasY = canvasCoordinates[1];
                     var localCoordinates = Transform2D.transform(transform, [canvasX, canvasY]);
                     activeLayer.mouseMoved(localCoordinates[0], localCoordinates[1]);
+                }
+            }, function () {
+                if (mouseOut && activeLayer === list[0]) {
+                    activeLayer.mouseOut();
                 }
             });
 
