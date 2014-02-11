@@ -2,7 +2,6 @@
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
 Shot durations weren't set correctly
-Enemy shots stay on screen when destroying player--likely need a locking list
 
 For alpha:
 Add weapon flashes

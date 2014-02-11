@@ -806,7 +806,6 @@ function GameLayer() {
     Layer.call(this);
     this.addEntity(new Master(this));
     this.player = this.addEntity(new Player(this));
-    // TODO: These need to be locking lists
     this.playerShots = [];
     this.enemies = [];
     this.enemyShots = [];
@@ -822,7 +821,7 @@ GameLayer.prototype.reset = function () {
     this.clearPlayerShots();
     this.clearEnemies();
     this.clearEnemyShots();
-    // TODO: Remove all entities (so that special effects get removed)
+    // TODO: Remove all entities (so that special effects get removed); don't forget to re-add the player...
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
 
@@ -893,11 +892,13 @@ GameLayer.prototype.clearEnemyShots = function () {
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
-    this.player.setPosition(x, y);
+    if (this.player) {
+        this.player.setPosition(x, y);
+    }
 };
 
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
-    if (button === MouseButton.primary) {
+    if (button === MouseButton.primary && this.player) {
         this.player.setFiring(pressed);
     }
 };
@@ -972,7 +973,7 @@ GameLayer.prototype.updateGame = function (ms) {
             // Check collisions
             // TODO: This is actually a different algorithm than in the original (it used the average of width and
             // height compared to the Manhattan distance...)
-            if (this.checkShotCollision(shot, this.player)) {
+            if (this.player && this.checkShotCollision(shot, this.player)) {
                 // TODO: Explosion
                 // TODO: Shields
                 this.player.takeDamage(shot);
@@ -1008,7 +1009,7 @@ GameLayer.prototype.updateGame = function (ms) {
             if (template) {
                 template.instantiate(this, enemy.x, enemy.y);
             }
-        } else if (this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
+        } else if (this.player && this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
             // TODO: Move to helper on Player?
             var damage = Math.min(35, enemy.health / 2);
             this.player.health -= damage;
@@ -1035,14 +1036,15 @@ GameLayer.prototype.updateGame = function (ms) {
     }
 
     // Check for loss
-    if (this.player.health <= 0) {
-        this.removeEntity(this.player);
-
+    if (this.player && this.player.health <= 0) {
         // Add explosion
         var template = this.player.explosionTemplate;
         if (template) {
             template.instantiate(this, this.player.x, this.player.y);
         }
+
+        this.removeEntity(this.player);
+        this.player = null;
     }
 
     // Add new enemies according to the level
