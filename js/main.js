@@ -333,7 +333,8 @@ function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, guns, explosio
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
     this.target = layer.player;
-    this.children = guns;
+    this.children = guns.slice();
+    this.guns = guns;
 }
 
 Enemy.boundX = 256;
@@ -345,15 +346,15 @@ Enemy.prototype.updateTargetLocation = function (ms) {
 };
 
 Enemy.prototype.setFiring = function (firing) {
-    var count = this.children.length;
+    var count = this.guns.length;
     for (var i = 0; i < count; i++) {
-        var gun = this.children[i];
+        var gun = this.guns[i];
         gun.setFiring(firing);
     }
 };
 
 Enemy.prototype.updateGuns = function (ms) {
-    if (this.children && !this.startedFiring) {
+    if (this.guns && !this.startedFiring) {
         if (this.y < 240) {
             this.setFiring(true);
             this.startedFiring = true;
@@ -399,6 +400,24 @@ function OmniGun(layer, host, x, y, warmupPeriod) {
 OmniGun.prototype = Object.create(Gun.prototype);
 OmniGun.prototype.createShot = Gun.createAimedShot;
 
+function Spinner(image, x, y, width, height, speed) {
+    Entity.call(this, x, y, width, height);
+    this.speed = speed;
+    this.elements = [image];
+}
+
+Spinner.prototype = Object.create(Entity.prototype);
+
+Spinner.prototype.update = function (ms) {
+    this.angle += this.speed * ms;
+    while (this.angle > 2 * Math.PI) {
+        this.angle -= 2 * Math.PI;
+    }
+    while (this.angle <= -2 * Math.PI) {
+        this.angle += 2 * Math.PI;
+    }
+};
+
 function Omni(layer, x, y) {
     // TODO: Mass
     Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, [
@@ -413,11 +432,13 @@ function Omni(layer, x, y) {
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
+    this.children.push(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
 }
 
 Omni.shipWidth = 40;
 Omni.shipHeight = 40;
 Omni.image = new Image('images/omni.png', 'brown', -Omni.shipWidth / 2, Omni.shipHeight / 2, Omni.shipWidth, Omni.shipHeight);
+Omni.spinnerImage = new Image('images/omniSpinner.png', 'brown');
 Omni.explosionImage = new Image('images/omniExplosion.png', 'gray');
 Omni.prototype = Object.create(Enemy.prototype);
 
@@ -857,7 +878,7 @@ GameLayer.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(Omni, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
