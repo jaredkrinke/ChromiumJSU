@@ -670,6 +670,49 @@ Boss0.prototype.updateTargetLocation = function (ms) {
     // TODO: Bounds?
 };
 
+function GroundSegment(x, y, width, height) {
+    Entity.call(this, x, y, width, height);
+    this.elements = [GroundSegment.image];
+}
+
+// TODO: Make sure that portrait resolution doesn't draw extra ground on the top and bottom!
+GroundSegment.image = new Image('images/groundMetal.png', 'DarkGray');
+GroundSegment.segmentWidth = 320;
+GroundSegment.segmentHeight = 320;
+GroundSegment.vy = -0.048;
+GroundSegment.prototype = Object.create(Entity.prototype);
+
+GroundSegment.prototype.update = function (ms) {
+    this.y += GroundSegment.vy * ms;
+    if (this.y <= -240 - GroundSegment.segmentHeight / 2) {
+        this.y += 480 + GroundSegment.segmentHeight;
+    }
+};
+
+function Ground(segment) {
+    Entity.call(this);
+    this.children = [];
+
+    var scaleY = 1;
+    var screenHeight = 480;
+    var y = -screenHeight / 2;
+    var rows = Math.ceil(screenHeight / segment.segmentHeight) + 1;
+    for (var i = 0; i < rows; i++) {
+        var scaleX = 1;
+        // TODO: Allow horizontal tiling?
+        for (var j = 0; j < 2; j++) {
+            this.children.push(new segment(-scaleX * segment.segmentWidth / 2, y + segment.segmentHeight / 2, scaleX * segment.segmentWidth, scaleY * segment.segmentHeight));
+            scaleX = -scaleX;
+        }
+
+        // Flip the next row
+        scaleY = -scaleY;
+        y += segment.segmentHeight;
+    }
+}
+
+Ground.prototype = Object.create(Entity.prototype);
+
 function OrderedQueue(compare) {
     this.compare = compare;
     this.head = null;
@@ -860,6 +903,7 @@ Master.prototype.update = function (ms) {
 function GameLayer() {
     Layer.call(this);
     this.addEntity(new Master(this));
+    this.ground = this.addEntity(new Ground(GroundSegment));
     this.player = this.addEntity(new Player(this));
     this.playerShots = [];
     this.enemies = [];

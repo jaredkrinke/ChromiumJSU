@@ -2,8 +2,12 @@
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
 Tank shot image needs to have correct transparency
+Omnis should shoot multiple shots, not just one
 
-For alpha:
+For alpha 1:
+Add ground special effects
+
+For alpha 2:
 Add power-ups/ammunition
 Add "don't let enemies through" logic/text
 
@@ -13,7 +17,6 @@ Complete more levels
 Add other special effects (boss damage, etc.)
 Add UI
 Add keyboard controls
-Add ground
 Add shields
 
 For final:
