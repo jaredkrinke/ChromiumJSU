@@ -135,7 +135,7 @@ function TankShot(x, y) {
 }
 
 TankShot.image = new Image('images/tankShot.png', 'yellow');
-TankShot.flashImage = new Image('images/tankShotCharge.png', 'purple');
+TankShot.flashImage = new Image('images/tankShotFlash.png', 'purple');
 TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
@@ -947,7 +947,7 @@ GameLayer.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(Omni, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
@@ -1024,7 +1024,9 @@ GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
 
 GameLayer.prototype.mouseOut = function () {
     // Stop firing if the mouse left the canvas
-    this.player.setFiring(false);
+    if (this.player) {
+        this.player.setFiring(false);
+    }
 };
 
 GameLayer.prototype.checkShotCollision = function (shot, b) {

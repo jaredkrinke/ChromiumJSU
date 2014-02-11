@@ -1,8 +1,4 @@
 ﻿Bugs:
-Tank shot image needs to have correct transparency
-
-For alpha 1:
-Fix bugs
 
 For alpha 2:
 Add power-ups/ammunition
