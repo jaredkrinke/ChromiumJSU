@@ -111,7 +111,6 @@ function StraightShot(x, y) {
 
 StraightShot.image = new Image('images/straightShot.png', 'yellow');
 StraightShot.explosionImage = new Image('images/straightShotExplosion.png', 'orange');
-StraightShot.flashImage = new Image('images/straightShotFlash.png', 'red');
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
@@ -139,16 +138,17 @@ TankShot.image = new Image('images/tankShot.png', 'yellow');
 TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
-function Gun(layer, host, x, y, period, periodRandomMax, shot, flashTemplate, warmupPeriod) {
+function Gun(layer, host, x, y, period, periodRandomMax, shot, flashTemplate, warmupPeriod, elements) {
+    Entity.call(this, x, y);
     this.layer = layer;
     this.host = host;
-    this.x = x;
-    this.y = y;
     this.period = period;
     this.periodRandomMax = periodRandomMax;
     this.shot = shot;
     this.flashTemplate = flashTemplate;
     this.warmupPeriod = warmupPeriod || 0;
+    this.elements = elements;
+    this.opacity = 0;
     this.reset();
 }
 
@@ -169,6 +169,8 @@ Gun.createAimedShot = function () {
     }
     return new this.shot(x, y, vx, vy)
 };
+
+Gun.prototype = Object.create(Entity.prototype);
 
 Gun.prototype.reset = function () {
     this.firing = false;
@@ -210,14 +212,25 @@ Gun.prototype.fire = function () {
 
 Gun.prototype.update = function (ms) {
     this.timer -= ms;
-    if (this.firing && this.timer <= 0) {
-        this.fire();
-        this.reload();
+    if (this.firing) {
+        if (this.timer <= 0) {
+            this.fire();
+            this.reload();
+
+            // Opacity is used for charging effects
+            this.opacity = 0;
+        } else {
+            this.opacity = Math.min(1, Math.max(0, (this.period - this.timer) / this.period));
+        }
+    } else {
+        this.opacity = 0;
     }
 };
 
-function Ship(layer, x, y, width, height, health, explosionTemplate) {
-    Entity.call(this, x, y, width, height);
+function Ship(layer, x, y, shipWidth, shipHeight, health, explosionTemplate) {
+    Entity.call(this, x, y);
+    this.shipWidth = shipWidth;
+    this.shipHeight = shipHeight;
     this.layer = layer;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
@@ -248,9 +261,9 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, 40, 48, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.elements = [Player.image];
-    this.guns = [
+    this.children = [
         // Default machine gun
         new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
         new Gun(layer, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
@@ -268,23 +281,25 @@ function Player(layer) {
     ];
 }
 
-Player.image = new Image('images/player.png', 'red');
+Player.shipWidth = 40;
+Player.shipHeight = 48;
+Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Player.shipHeight / 2, Player.shipWidth, Player.shipHeight);
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
 
 Player.prototype.reset = function () {
-    var count = this.guns.length;
+    var count = this.children.length;
     for (var i = 0; i < count; i++) {
-        this.guns[i].reset();
+        this.children[i].reset();
     }
 };
 
 // TODO: Keyboard/touch controls
 Player.prototype.setFiring = function (firing) {
-    var count = this.guns.length;
+    var count = this.children.length;
     for (var i = 0; i < count; i++) {
-        this.guns[i].setFiring(firing);
+        this.children[i].setFiring(firing);
     }
 };
 
@@ -297,10 +312,8 @@ Player.prototype.takeDamage = function (shot) {
 };
 
 Player.prototype.update = function (ms) {
-    var count = this.guns.length;
-    for (var i = 0; i < count; i++) {
-        this.guns[i].update(ms);
-    }
+    // Update guns
+    this.updateChildren(ms);
 
     // Apply boundaries and temporary offsets
     // TODO: It seems like the bounds would be better controlled in the layer...
@@ -313,13 +326,13 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(layer, x, y, width, height, speed, health, guns, explosionTemplate) {
-    Ship.call(this, layer, x, y, width, height, health, explosionTemplate);
+function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, guns, explosionTemplate) {
+    Ship.call(this, layer, x, y, shipWidth, shipHeight, health, explosionTemplate);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
     this.target = layer.player;
-    this.guns = guns;
+    this.children = guns;
 }
 
 Enemy.boundX = 256;
@@ -331,15 +344,15 @@ Enemy.prototype.updateTargetLocation = function (ms) {
 };
 
 Enemy.prototype.setFiring = function (firing) {
-    var count = this.guns.length;
+    var count = this.children.length;
     for (var i = 0; i < count; i++) {
-        var gun = this.guns[i];
+        var gun = this.children[i];
         gun.setFiring(firing);
     }
 };
 
 Enemy.prototype.updateGuns = function (ms) {
-    if (this.guns && !this.startedFiring) {
+    if (this.children && !this.startedFiring) {
         if (this.y < 240) {
             this.setFiring(true);
             this.startedFiring = true;
@@ -354,20 +367,14 @@ Enemy.prototype.update = function (ms) {
 
     // Shooting
     this.updateGuns(ms);
-    if (this.guns) {
-        var count = this.guns.length;
-        for (var i = 0; i < count; i++) {
-            this.guns[i].update(ms);
-        }
-    }
+    this.updateChildren(ms);
 };
 
 // TODO: Random factor?
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    // TODO: Really the flash is more of a "charge up" (i.e. before the shot is fired)... accommodate that instead?
-    Enemy.call(this, layer, x, y, 43, 58, 0.065, 110,
-        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, new ExplosionTemplate(StraightShot.flashImage, 16, 16, 10 * 20), 30 * 20 + 90 * 20 * Math.random())],
+    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065, 110,
+        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
@@ -375,7 +382,12 @@ function Straight(layer, x, y) {
     this.elements = [Straight.image];
 }
 
-Straight.image = new Image('images/straight.png', 'gray');
+Straight.shipWidth = 43;
+Straight.shipHeight = 58;
+Straight.image = new Image('images/straight.png', 'gray', -Straight.shipWidth / 2, Straight.shipHeight / 2, Straight.shipWidth, Straight.shipHeight);
+Straight.chargeWidth = 16;
+Straight.chargeHeight = 16;
+Straight.chargeImage = new Image('images/straightShot.png', 'red', -Straight.chargeWidth / 2, Straight.chargeHeight / 2, Straight.chargeWidth, Straight.chargeHeight);
 Straight.prototype = Object.create(Enemy.prototype);
 
 function OmniGun(layer, host, x, y, warmupPeriod) {
@@ -388,7 +400,7 @@ OmniGun.prototype.createShot = Gun.createAimedShot;
 
 function Omni(layer, x, y) {
     // TODO: Mass
-    Enemy.call(this, layer, x, y, 40, 40, 0.1 + 0.057 * Math.random(), 45, [
+    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, [
         new OmniGun(layer, this, 0, 0, 0),
         new OmniGun(layer, this, 0, 0, 6 * 20),
         new OmniGun(layer, this, 0, 0, 12 * 20)
@@ -402,7 +414,9 @@ function Omni(layer, x, y) {
     this.elements = [Omni.image];
 }
 
-Omni.image = new Image('images/omni.png', 'brown');
+Omni.shipWidth = 40;
+Omni.shipHeight = 40;
+Omni.image = new Image('images/omni.png', 'brown', -Omni.shipWidth / 2, Omni.shipHeight / 2, Omni.shipWidth, Omni.shipHeight);
 Omni.explosionImage = new Image('images/omniExplosion.png', 'gray');
 Omni.prototype = Object.create(Enemy.prototype);
 
@@ -420,7 +434,7 @@ Omni.prototype.updateTargetLocation = function (ms) {
 };
 
 function RayGun(layer, x, y) {
-    Enemy.call(this, layer, x, y, 68, 68, 0.043, 1000,
+    Enemy.call(this, layer, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000,
         [new Gun(layer, this, 0, -14, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
@@ -436,7 +450,9 @@ function RayGun(layer, x, y) {
     this.lastMoveY = 0;
 }
 
-RayGun.image = new Image('images/rayGun.png', 'purple');
+RayGun.shipWidth = 68;
+RayGun.shipHeight = 68;
+RayGun.image = new Image('images/rayGun.png', 'purple', -RayGun.shipWidth / 2, RayGun.shipHeight / 2, RayGun.shipWidth, RayGun.shipHeight);
 RayGun.prototype = Object.create(Enemy.prototype);
 
 RayGun.prototype.updateTargetLocation = function (ms) {
@@ -505,8 +521,8 @@ function Boss0(layer, x, y) {
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
 
     // Create explosion sequence
-    var width = 199;
-    var height = 129;
+    var width = Boss0.shipWidth;
+    var height = Boss0.shipHeight;
     var explosions = [];
     var explosionDuration = 1500;
     var explosionFrequency = 5;
@@ -521,7 +537,7 @@ function Boss0(layer, x, y) {
         explosionFrequency *= 1.1;
     }
 
-    Enemy.call(this, layer, x, y, width, height, 0.028, /*10000*/ 10, guns, new ExplosionSequence(explosions));
+    Enemy.call(this, layer, x, y, width, height, 0.028, 10000, guns, new ExplosionSequence(explosions));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -549,7 +565,9 @@ function Boss0(layer, x, y) {
     this.tankGuns[1].speed = 2 * this.ammoSpeed;
 }
 
-Boss0.image = new Image('images/boss0.png', 'cyan');
+Boss0.shipWidth = 199;
+Boss0.shipHeight = 129;
+Boss0.image = new Image('images/boss0.png', 'cyan', -Boss0.shipWidth / 2, Boss0.shipHeight / 2, Boss0.shipWidth, Boss0.shipHeight);
 Boss0.prototype = Object.create(Enemy.prototype);
 
 Boss0.prototype.updateGuns = function (ms) {
@@ -915,8 +933,8 @@ GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
 };
 
 GameLayer.prototype.checkShotCollision = function (shot, b) {
-    var bw = b.width / 2;
-    var bh = b.height / 2;
+    var bw = b.shipWidth / 2;
+    var bh = b.shipHeight / 2;
     return (shot.x >= b.x - bw)
         && (shot.x <= b.x + bw)
         && (shot.y >= b.y - bh)
@@ -928,7 +946,7 @@ GameLayer.prototype.checkShipCollision = function (a, b) {
     var x = a.x - b.x;
     var y = a.y - b.y;
     var distance = Math.abs(x) + Math.abs(y);
-    return distance < (a.width + b.width) / 4;
+    return distance < (a.shipWidth + b.shipHeight) / 4;
 };
 
 GameLayer.prototype.updateGame = function (ms) {
