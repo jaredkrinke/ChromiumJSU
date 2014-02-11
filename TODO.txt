@@ -1,9 +1,10 @@
 ﻿Bugs:
 Releasing the mouse button outside of the canvas doesn't cause firing to stop
 Moving the mouse outside the canvas doesn't affect movement
+Tank shot image needs to have correct transparency
 
 For alpha:
-Add weapon flashes
+Add other enemy special effects
 Add power-ups/ammunition
 Add "don't let enemies through" logic
 

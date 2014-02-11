@@ -135,6 +135,7 @@ function TankShot(x, y) {
 }
 
 TankShot.image = new Image('images/tankShot.png', 'yellow');
+TankShot.flashImage = new Image('images/tankShotCharge.png', 'purple');
 TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
@@ -514,8 +515,8 @@ function Boss0(layer, x, y) {
         new Gun(layer, this, -31, -13, 50 * 20, 0, OmniShot)
     ];
     this.tankGuns = [
-        new Gun(layer, this, -31, -13, 500 * 20, 0, TankShot),
-        new Gun(layer, this, 31, -13, 500 * 20, 0, TankShot)
+        new Gun(layer, this, -31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20)),
+        new Gun(layer, this, 31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20))
     ];
     var guns = [this.rayGun];
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
@@ -601,15 +602,14 @@ Boss0.prototype.updateGuns = function (ms) {
             }
 
             // Fire omni guns
-            if ((this.steps / 200) % 2 === 0) {
-                if ((this.steps / 100) % 2 === 0) {
-                    if ((this.steps / 50) % 2 === 0) {
+            if (Math.floor(this.steps / 200) % 2 === 0) {
+                if (Math.floor(this.steps / 100) % 2 === 0) {
+                    if (Math.floor(this.steps / 50) % 2 === 0) {
                         this.omniGuns[0].fire()
                         this.omniGuns[1].fire()
                     }
                 } else if (this.steps % 10 === 0) {
                     // Fire tank guns
-                    // TODO: Is this basically dead code?
                     this.tankGuns[0].fire();
                     this.tankGuns[1].fire();
                 }
