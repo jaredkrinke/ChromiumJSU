@@ -87,7 +87,7 @@ Bullet.explosionImage = new Image('images/bulletExplosion.png', 'orange');
 Bullet.prototype = Object.create(Shot.prototype);
 
 function Plasma(x, y) {
-    Shot.call(this, x, y, Plasma.image, 6, 43, 0, 0.28, 6, new ExplosionTemplate(Plasma.explosionImage, 28, 57, 10 * 20), true);
+    Shot.call(this, x, y, Plasma.image, 6, 43, 0, 0.28, 6, new ExplosionTemplate(Plasma.explosionImage, 28, 57, 15 * 20), true);
 }
 
 Plasma.image = new Image('images/plasma.png', 'yellow');
@@ -95,7 +95,7 @@ Plasma.explosionImage = new Image('images/plasmaExplosion.png', 'orange');
 Plasma.prototype = Object.create(Shot.prototype);
 
 function Emp(x, y) {
-    Shot.call(this, x, y, Emp.image, 17, 43, 0, 0.43, 40, new ExplosionTemplate(Emp.explosionImage, 51, 57, 10 * 20));
+    Shot.call(this, x, y, Emp.image, 17, 43, 0, 0.43, 40, new ExplosionTemplate(Emp.explosionImage, 51, 57, 23 * 20));
 }
 
 Emp.image = new Image('images/emp.png', 'yellow');
@@ -103,7 +103,7 @@ Emp.explosionImage = new Image('images/empExplosion.png', 'orange');
 Emp.prototype = Object.create(Shot.prototype);
 
 function StraightShot(x, y) {
-    Shot.call(this, x, y, StraightShot.image, 14, 31, 0, -0.28, 75, new ExplosionTemplate(StraightShot.explosionImage, 85, 85, 10 * 20));
+    Shot.call(this, x, y, StraightShot.image, 14, 31, 0, -0.28, 75, new ExplosionTemplate(StraightShot.explosionImage, 85, 85, 15 * 20));
 }
 
 StraightShot.image = new Image('images/straightShot.png', 'yellow');
@@ -238,7 +238,7 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, 40, 48, 5, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    Ship.call(this, layer, 0, 0, 40, 48, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.elements = [Player.image];
     this.guns = [
         // Default machine gun
