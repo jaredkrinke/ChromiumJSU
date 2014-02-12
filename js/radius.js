@@ -918,6 +918,12 @@ var Radius = new function () {
             var lastActiveLayer = activeLayer;
             activeLayer = list[0];
 
+            // Update cursor, if needed
+            var cursor = activeLayer.cursor || 'auto';
+            if (canvas.style.cursor !== cursor) {
+                canvas.style.cursor = cursor;
+            }
+
             // Draw the frame with the top layer (which may have changed after input/updates)
             activeLayer.draw(canvas, context);
 

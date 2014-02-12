@@ -940,6 +940,10 @@ GameLayer.prototype.reset = function () {
     this.clearPlayerShots();
     this.clearEnemies();
     this.clearEnemyShots();
+
+    // Turn off the mouse cursor since the player moves with the mouse
+    this.cursor = 'none';
+
     // TODO: Remove all entities (so that special effects get removed); don't forget to re-add the player...
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
@@ -1171,6 +1175,9 @@ GameLayer.prototype.updateGame = function (ms) {
 
         this.removeEntity(this.player);
         this.player = null;
+
+        // Re-enable the cursor
+        this.cursor = 'auto';
     }
 
     // Add new enemies according to the level
