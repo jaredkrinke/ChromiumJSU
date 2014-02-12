@@ -1,18 +1,23 @@
 ﻿Bugs:
+Multiple ray gun enemies show up in the first level--expected?
 
 For alpha 2:
 Add power-ups/ammunition
-Add "don't let enemies through" logic/text
-
-For beta 1:
-Sound
-Complete more levels
-Add other special effects (boss damage, etc.)
 Add UI
+Add "don't let enemies through" logic/text
+Add other special effects (boss damage, etc.)
+
+For alpha 3:
+Sound
+Preload images before the game can start
 Add keyboard controls
 Add shields
+Knock enemies when hit
+Make it more obvious when the player gets hit
+
+For beta 1:
+Add menus
+Complete more levels
 
 For final:
-Add menus
-Add sounds
 Add touch controls
