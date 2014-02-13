@@ -264,44 +264,54 @@ Ship.prototype.updateOffsets = function (ms) {
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.elements = [Player.image, Player.exhaustImage];
-    this.guns = [
-        // Default machine gun
+
+    // Weapons
+    var defaultGun = [
         new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
         new Gun(layer, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
-
-        // Extra machine gun
+    ];
+    var machineGun = [
         new Gun(layer, this, 14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
         new Gun(layer, this, -14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
-
-        // Plasma
+    ];
+    var plasma = [
         new Gun(layer, this, 0, 10, 500, 0, Plasma, new ExplosionTemplate(Plasma.flashImage, 28, 28, 10 * 20)),
-
-        // EMP
+    ];
+    var emp = [
         new Gun(layer, this, -20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20)),
         new Gun(layer, this, 20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
     ];
 
+    this.guns = defaultGun.concat(machineGun, plasma, emp);
+
     // Hook up ammo to guns
     this.ammo = [150, 150, 150];
     var player = this;
-    var createFire = function (ammoIndex, ammoCount) {
-        // Return a replacement "fire" function that calls the original and then accounts for ammunition
-        return function () {
-            Gun.prototype.fire.apply(this, arguments);
-            player.ammo[ammoIndex] = Math.max(0, player.ammo[ammoIndex] - ammoCount);
-        };
+    var limitAmmo = function (guns, ammoIndex, ammoPerShot) {
+        var count = guns.length;
+        for (var i = 0; i < count; i++) {
+            (function (i) {
+                var gun = guns[i];
+
+                // Replace the "fire" function with one that calls the original and then accounts for ammunition
+                gun.fire = function () {
+                    Gun.prototype.fire.apply(this, arguments);
+                    player.ammo[ammoIndex] = Math.max(0, player.ammo[ammoIndex] - ammoPerShot);
+                };
+
+                // Turn the gun on/off based on ammo
+                gun.update = function () {
+                    if (player.ammo[ammoIndex] > 0) {
+                        Gun.prototype.update.apply(this, arguments);
+                    }
+                };
+            })(i);
+        }
     };
 
-    var fireBullet = createFire(0, 0.25);
-    this.guns[2].fire = fireBullet;
-    this.guns[3].fire = fireBullet;
-
-    var firePlasma = createFire(1, 1.5);
-    this.guns[4].fire = firePlasma;
-
-    var fireEmp = createFire(2, 1.5);
-    this.guns[5].fire = fireEmp;
-    this.guns[6].fire = fireEmp;
+    limitAmmo(machineGun, 0, 0.25);
+    limitAmmo(plasma, 1, 1.5);
+    limitAmmo(emp, 2, 1.5);
 
     // Set up children
     this.children = this.guns.slice();
