@@ -1,5 +1,4 @@
 ﻿Bugs:
-Multiple ray gun enemies show up in the first level--expected?
 
 For alpha 2:
 Add power-ups/ammunition
