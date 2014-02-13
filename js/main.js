@@ -1,6 +1,45 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+function PowerUp(image, shadowImage, use, layer, x, y) {
+    Entity.call(this, x, y, 17, 17);
+    this.layer = layer;
+    this.use = use;
+    this.vy = -0.051;
+    this.elements = [shadowImage, image];
+}
+
+PowerUp.weaponImage = new Image('images/powerupWeapon.png', 'white');
+PowerUp.prototype = Object.create(Entity.prototype);
+
+PowerUp.prototype.update = function (ms) {
+    this.y += this.vy * ms;
+};
+
+PowerUps = [
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'yellow'), function () {
+            if (this.layer.player) {
+                this.layer.player.ammo[0] = 150;
+            }
+        }, layer, x, y);
+    },
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'green'), function () {
+            if (this.layer.player) {
+                this.layer.player.ammo[1] = 150;
+            }
+        }, layer, x, y);
+    },
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'blue'), function () {
+            if (this.layer.player) {
+                this.layer.player.ammo[2] = 150;
+            }
+        }, layer, x, y);
+    },
+];
+
 function Explosion(image, x, y, width, height, duration, delay) {
     Entity.call(this, x, y, width, height);
     this.duration = duration;
@@ -932,12 +971,35 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
     }
 };
 
+Level.prototype.addAmmo = function (start, duration, firsts) {
+    firsts = firsts || [0, 100 * 20, 1000 * 20];
+    var randomModifiers = [200 * 20, 200 * 20, 500 * 20];
+    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20];
+
+    // Add each type of ammo
+    var ammoCount = firsts.length;
+    for (var j = 0; j < ammoCount; j++) {
+        // Loop through and add the ammo
+        var t = start + firsts[j] + randomModifiers[j] * Math.random();
+        while (t < start + duration) {
+            this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), GameLayer.boundY));
+            t += frequencies[j] + (Math.random() - 0.5) * randomModifiers[j] * 2;
+        }
+    }
+};
+
 Level.prototype.update = function (ms) {
     this.timer += ms;
     var action;
     while ((action = this.queue.first()) && this.timer >= action.time) {
         action = this.queue.remove();
-        this.layer.addEnemy(new action.factory(this.layer, action.x, action.y));
+        // TODO: It would probably be better to move this logic into a generic "add item" in the layer itself
+        var item = new action.factory(this.layer, action.x, action.y);
+        if (item instanceof Enemy) {
+            this.layer.addEnemy(item);
+        } else if (item instanceof PowerUp) {
+            this.layer.addPowerUp(item);
+        }
     }
 };
 
@@ -988,6 +1050,7 @@ function GameLayer() {
     this.playerShots = [];
     this.enemies = [];
     this.enemyShots = [];
+    this.powerups = [];
     this.reset();
 }
 
@@ -1000,6 +1063,7 @@ GameLayer.prototype.reset = function () {
     this.clearPlayerShots();
     this.clearEnemies();
     this.clearEnemyShots();
+    this.clearPowerUps();
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.cursor = 'none';
@@ -1069,7 +1133,25 @@ GameLayer.prototype.removeEnemyShot = function (shot) {
 
 GameLayer.prototype.clearEnemyShots = function () {
     while (this.enemyShots.length > 0) {
-        this.removeenemyShot(this.enemyShots[0]);
+        this.removeEnemyShot(this.enemyShots[0]);
+    }
+};
+
+GameLayer.prototype.addPowerUp = function (powerup) {
+    this.powerups.push(this.addEntity(powerup));
+};
+
+GameLayer.prototype.removePowerUp = function (powerup) {
+    var index = this.powerups.indexOf(powerup);
+    if (index >= 0) {
+        this.removeEntity(this.powerups[index]);
+        this.powerups.splice(index, 1);
+    }
+};
+
+GameLayer.prototype.clearPowerUps = function () {
+    while (this.powerups.length > 0) {
+        this.removePowerUp(this.powerups[0]);
     }
 };
 
@@ -1108,6 +1190,12 @@ GameLayer.prototype.checkShipCollision = function (a, b) {
     var y = a.y - b.y;
     var distance = Math.abs(x) + Math.abs(y);
     return distance < (a.shipWidth + b.shipHeight) / 4;
+};
+
+GameLayer.prototype.checkPowerUpCollision = function (ship, powerup) {
+    // Again, kind of odd logic here
+    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
+    return distance < ship.shipHeight / 2;
 };
 
 GameLayer.prototype.updateGame = function (ms) {
@@ -1225,6 +1313,33 @@ GameLayer.prototype.updateGame = function (ms) {
         }
     }
 
+    // Check bounds and collisions for power-ups
+    count = this.powerups.length;
+    for (i = 0; i < count; i++) {
+        var powerup = this.powerups[i];
+        var remove = false;
+
+        if (powerup.y < -GameLayer.boundY
+            || powerup.y > GameLayer.boundY
+            || powerup.x < -GameLayer.boundX
+            || powerup.x > GameLayer.boundX) {
+            remove = true;
+        } else {
+            // Check collisions
+            if (this.player && this.checkPowerUpCollision(this.player, powerup)) {
+                // Apply the power-up
+                powerup.use();
+                remove = true;
+            }
+        }
+
+        if (remove) {
+            this.removePowerUp(powerup);
+            i--;
+            count--;
+        }
+    }
+
     // Check for loss
     if (this.player && this.player.health <= 0) {
         // Add explosion
@@ -1311,10 +1426,14 @@ GameLayer.prototype.loadLevel1 = function (layer) {
         duration: (1000 - 75) * 20
     });
 
-    // TODO: Ammunition
+
     // TODO: Power-ups
 
-    return new Level(this, waves);
+    // Ammunition
+    var level = new Level(this, waves);
+    level.addAmmo(0, totalTime + 9000 * 20);
+
+    return level;
 };
 
 window.addEventListener('DOMContentLoaded', function () {
