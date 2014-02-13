@@ -600,7 +600,7 @@ Boss0.prototype = Object.create(Enemy.prototype);
 
 Boss0.prototype.updateGuns = function (ms) {
     this.timer += ms;
-    if (this.y < 240) {
+    if (this.y < 240 && this.target) {
         var deltaX = this.target.x - this.x;
 
         // Fire ray gun if near the player
@@ -742,7 +742,7 @@ OrderedQueue.prototype.insert = function (item) {
         var node;
         var added = false;
         for (node = this.head; node.next; node = node.next) {
-            if (this.compare(item, node.next) <= 0) {
+            if (this.compare(item, node.next.value) <= 0) {
                 var newNode = {
                     value: item,
                     next: node.next
