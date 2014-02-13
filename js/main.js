@@ -281,6 +281,29 @@ function Player(layer) {
         new Gun(layer, this, 20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
     ];
 
+    // Hook up ammo to guns
+    this.ammo = [150, 150, 150];
+    var player = this;
+    var createFire = function (ammoIndex, ammoCount) {
+        // Return a replacement "fire" function that calls the original and then accounts for ammunition
+        return function () {
+            Gun.prototype.fire.apply(this, arguments);
+            player.ammo[ammoIndex] = Math.max(0, player.ammo[ammoIndex] - ammoCount);
+        };
+    };
+
+    var fireBullet = createFire(0, 0.25);
+    this.guns[2].fire = fireBullet;
+    this.guns[3].fire = fireBullet;
+
+    var firePlasma = createFire(1, 1.5);
+    this.guns[4].fire = firePlasma;
+
+    var fireEmp = createFire(2, 1.5);
+    this.guns[5].fire = fireEmp;
+    this.guns[6].fire = fireEmp;
+
+    // Set up children
     this.children = this.guns.slice();
 }
 
@@ -919,12 +942,39 @@ Master.prototype.update = function (ms) {
     this.layer.updateGame(ms);
 };
 
+function Display(layer, player) {
+    this.layer = layer;
+    this.player = player;
+
+    var x = -299;
+    var y = 227;
+    this.ammo = [];
+    var count = player.ammo.length;
+    for (var i = 0; i < count; i++) {
+        this.ammo[i] = new Rectangle(x + 9 * i, y, 6, 1, 'red');
+    }
+
+    this.elements = this.ammo;
+}
+
+Display.prototype = Object.create(Entity.prototype);
+
+Display.prototype.update = function (ms) {
+    if (this.player) {
+        var count = this.player.ammo.length;
+        for (var i = 0; i < count; i++) {
+            this.ammo[i].height = 1.5 * this.player.ammo[i];
+        }
+    }
+};
+
 function GameLayer() {
     Layer.call(this);
     this.addEntity(new Master(this));
     this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
     this.ground = this.addEntity(new Ground(GroundTemplates.metal));
     this.player = this.addEntity(new Player(this));
+    this.display = this.addEntity(new Display(this, this.player));
     this.playerShots = [];
     this.enemies = [];
     this.enemyShots = [];

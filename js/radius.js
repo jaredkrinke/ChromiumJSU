@@ -382,7 +382,7 @@ Layer.prototype = {
                             context.globalAlpha *= elementOpacity;
                         }
 
-                        if (element instanceof Image && element.loaded) {
+                        if (element instanceof Image && element.loaded && element.width && element.height) {
                             context.drawImage(element.img, element.x, -element.y, element.width, element.height);
                         } else {
                             // Color is only supported for text/shapes
@@ -408,7 +408,7 @@ Layer.prototype = {
                                         offset += element.lineHeight;
                                     }
                                 }
-                            } else {
+                            } else if (element.width && element.height) {
                                 // Rectangle
                                 context.fillRect(element.x, -element.y, element.width, element.height);
                             }
