@@ -6,18 +6,29 @@ function PowerUp(image, shadowImage, use, layer, x, y) {
     this.layer = layer;
     this.use = use;
     this.vy = -0.051;
+    this.baseX = x;
+    this.baseY = y;
+    this.timer = 0;
+    this.shadowImage = shadowImage;
     this.elements = [shadowImage, image];
 }
 
 PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
-// TODO: The shadows should wobble individually
 PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
-    this.y += this.vy * ms;
+    this.baseY += this.vy * ms;
+
+    // Drift slightly
+    this.timer += ms;
+    this.x = this.baseX + 3 * Math.sin(this.timer / 20 / 45 * 2 * Math.PI);
+    this.y = this.baseY + 9 * Math.sin(this.timer / 20 / 75 * 2 * Math.PI);
+
+    // Randomly rotate the shadow to create a shimmering effect
+    this.shadowImage.angle = 2 * Math.PI * Math.random();
 };
 
 PowerUps = [

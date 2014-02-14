@@ -383,7 +383,17 @@ Layer.prototype = {
                         }
 
                         if (element instanceof Image && element.loaded && element.width && element.height) {
-                            context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                            if (element.angle) {
+                                context.translate(element.x, -element.y);
+                                context.scale(element.width, element.height);
+                                // Rotate around the center
+                                context.translate(0.5, 0.5);
+                                context.rotate(element.angle);
+                                context.translate(-0.5, -0.5);
+                                context.drawImage(element.img, 0, 0, 1, 1);
+                            } else {
+                                context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                            }
                         } else {
                             // Color is only supported for text/shapes
                             if (element.color) {
@@ -410,7 +420,17 @@ Layer.prototype = {
                                 }
                             } else if (element.width && element.height) {
                                 // Rectangle
-                                context.fillRect(element.x, -element.y, element.width, element.height);
+                                if (element.angle) {
+                                    context.translate(element.x, -element.y);
+                                    context.scale(element.width, element.height);
+                                    // Rotate around the center
+                                    context.translate(0.5, 0.5);
+                                    context.rotate(element.angle);
+                                    context.translate(-0.5, -0.5);
+                                    context.fillRect(-0.5, -0.5, 1, 1);
+                                } else {
+                                    context.fillRect(element.x, -element.y, element.width, element.height);
+                                }
                             }
                         }
 
