@@ -1,7 +1,7 @@
 ﻿Bugs:
 
 For alpha 2:
-Add power-ups/ammunition
+Add power-ups
 Add UI
 Add "don't let enemies through" logic/text
 Add other special effects (boss damage, etc.)

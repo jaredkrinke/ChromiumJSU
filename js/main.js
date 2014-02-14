@@ -1038,12 +1038,26 @@ function Display(layer, player) {
     this.ammo = [];
     var count = player.ammo.length;
     for (var i = 0; i < count; i++) {
-        this.ammo[i] = new Rectangle(x + 9 * i, y, 6, 1, 'red');
+        var ammo = Display.ammoBarImages[i];
+        ammo.x = x + 9 * i;
+        ammo.y = y;
+        ammo.width = 6;
+        ammo.height = 1;
+        this.ammo[i] = ammo;
     }
 
-    this.elements = this.ammo;
+    var backgrounds = [Display.statLeftImage];
+
+    this.elements = backgrounds.concat(this.ammo);
 }
 
+// TODO: Need a way to share the underlying image after creating the right side version of this
+Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
+Display.ammoBarImages = [
+    new Image('images/ammoBar0.png', 'yellow'),
+    new Image('images/ammoBar1.png', 'green'),
+    new Image('images/ammoBar2.png', 'blue')
+];
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
