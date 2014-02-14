@@ -2,14 +2,18 @@
 /// <reference path="radius-ui.js" />
 
 function PowerUp(image, shadowImage, use, layer, x, y) {
-    Entity.call(this, x, y, 17, 17);
+    Entity.call(this, x, y, 34, 34);
     this.layer = layer;
     this.use = use;
     this.vy = -0.051;
     this.elements = [shadowImage, image];
 }
 
-PowerUp.weaponImage = new Image('images/powerupWeapon.png', 'white');
+PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
+// TODO: The shadows should wobble individually
+PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
@@ -18,21 +22,21 @@ PowerUp.prototype.update = function (ms) {
 
 PowerUps = [
     function (layer, x, y) {
-        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'yellow'), function () {
+        return new PowerUp(PowerUp.weaponImage, PowerUp.shadow0Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[0] = 150;
             }
         }, layer, x, y);
     },
     function (layer, x, y) {
-        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'green'), function () {
+        return new PowerUp(PowerUp.weaponImage, PowerUp.shadow1Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[1] = 150;
             }
         }, layer, x, y);
     },
     function (layer, x, y) {
-        return new PowerUp(PowerUp.weaponImage, new Rectangle(-0.6, 0.6, 1.2, 1.2, 'blue'), function () {
+        return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[2] = 150;
             }
@@ -324,7 +328,7 @@ function Player(layer) {
     this.guns = defaultGun.concat(machineGun, plasma, emp);
 
     // Hook up ammo to guns
-    this.ammo = [150, 150, 150];
+    this.ammo = [0, 0, 0];
     var player = this;
     var limitAmmo = function (guns, ammoIndex, ammoPerShot) {
         var count = guns.length;
