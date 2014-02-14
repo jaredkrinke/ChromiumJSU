@@ -316,7 +316,7 @@ Ship.prototype.updateOffsets = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, 500, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.elements = [Player.image, Player.exhaustImage];
 
     // Weapons
@@ -371,6 +371,7 @@ function Player(layer) {
     this.children = this.guns.slice();
 }
 
+Player.maxHealth = 500;
 Player.shipWidth = 40;
 Player.shipHeight = 48;
 Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Player.shipHeight / 2, Player.shipWidth, Player.shipHeight);
@@ -1047,8 +1048,9 @@ function Display(layer, player) {
     }
 
     var backgrounds = [Display.statLeftImage];
+    this.healthBar = Display.healthBarImage;
 
-    this.elements = backgrounds.concat(this.ammo);
+    this.elements = backgrounds.concat(this.ammo, [this.healthBar]);
 }
 
 // TODO: Need a way to share the underlying image after creating the right side version of this
@@ -1058,14 +1060,23 @@ Display.ammoBarImages = [
     new Image('images/ammoBar1.png', 'green'),
     new Image('images/ammoBar2.png', 'blue')
 ];
+Display.barBaseY = -222;
+Display.barMaxHeight = 171;
+Display.healthBarImage = new Image('images/healthBar.png', 'red', -296, Display.barBaseY + Display.barMaxHeight, 45, 171);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
     if (this.player) {
+        // Update ammo
         var count = this.player.ammo.length;
         for (var i = 0; i < count; i++) {
             this.ammo[i].height = 1.5 * this.player.ammo[i];
         }
+
+        // Update health
+        var height = Math.max(0, this.player.health / Player.maxHealth * Display.barMaxHeight);
+        this.healthBar.height = height;
+        this.healthBar.y = Display.barBaseY + height;
     }
 };
 
