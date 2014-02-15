@@ -1,4 +1,5 @@
 ﻿Bugs:
+Ray gun shots look like they're not aligned correctly
 
 For alpha 2:
 Add power-ups

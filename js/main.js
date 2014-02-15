@@ -1062,7 +1062,7 @@ Display.ammoBarImages = [
 ];
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
-Display.healthBarImage = new Image('images/healthBar.png', 'red', -296, Display.barBaseY + Display.barMaxHeight, 45, 171);
+Display.healthBarImage = new Image('images/healthBar.png', 'red', -299, Display.barBaseY + Display.barMaxHeight, 24, 171);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
