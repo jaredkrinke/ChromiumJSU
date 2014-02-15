@@ -14,9 +14,12 @@ function PowerUp(image, shadowImage, use, layer, x, y) {
 }
 
 PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
+PowerUp.shieldImage = new Image('images/powerupShield.png', 'black');
+// TODO: Maybe generate some of these images rather than loading several separate ones?
 PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow3Image = new Image('images/powerupShadow3.png', 'blue', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
@@ -50,6 +53,13 @@ PowerUps = [
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[2] = 150;
+            }
+        }, layer, x, y);
+    },
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
+            if (this.layer.player) {
+                this.layer.player.health = Player.maxHealth;
             }
         }, layer, x, y);
     },
@@ -987,15 +997,15 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
     }
 };
 
-Level.prototype.addAmmo = function (start, duration, firsts) {
-    firsts = firsts || [0, 100 * 20, 1000 * 20];
-    var randomModifiers = [200 * 20, 200 * 20, 500 * 20];
-    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20];
+Level.prototype.addPowerUps = function (start, duration, firsts) {
+    firsts = firsts || [0, 100 * 20, 1000 * 20, 500 * 20];
+    var randomModifiers = [200 * 20, 200 * 20, 500 * 20, 900 * 20];
+    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20, 4000 * 20];
 
-    // Add each type of ammo
-    var ammoCount = firsts.length;
-    for (var j = 0; j < ammoCount; j++) {
-        // Loop through and add the ammo
+    // Add each type of power-up
+    var powerupCount = firsts.length;
+    for (var j = 0; j < powerupCount; j++) {
+        // Loop through and add the power-up
         var t = start + firsts[j] + randomModifiers[j] * Math.random();
         while (t < start + duration) {
             this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), GameLayer.boundY));
@@ -1467,11 +1477,9 @@ GameLayer.prototype.loadLevel1 = function (layer) {
     });
 
 
-    // TODO: Power-ups
-
-    // Ammunition
+    // Ammunition and power-ups
     var level = new Level(this, waves);
-    level.addAmmo(0, totalTime + 9000 * 20);
+    level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
 };
