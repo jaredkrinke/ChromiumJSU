@@ -5,7 +5,7 @@ For alpha 2:
 Add power-ups
 Add UI
 Add "don't let enemies through" logic/text
-Add other special effects (boss damage, etc.)
+Add other special effects (boss damage, power-up electricity, etc.)
 
 For alpha 3:
 Sound

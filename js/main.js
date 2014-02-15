@@ -19,7 +19,8 @@ PowerUp.shieldImage = new Image('images/powerupShield.png', 'black');
 PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
-PowerUp.shadow3Image = new Image('images/powerupShadow3.png', 'blue', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow3Image = new Image('images/powerupShadow3.png', 'orange', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow3Image = new Image('images/powerupShadow4.png', 'purple', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
@@ -60,6 +61,13 @@ PowerUps = [
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
             if (this.layer.player) {
                 this.layer.player.health = Player.maxHealth;
+            }
+        }, layer, x, y);
+    },
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
+            if (this.layer.player) {
+                this.layer.player.shields = Player.maxShields;
             }
         }, layer, x, y);
     },
@@ -327,6 +335,7 @@ Ship.prototype.updateOffsets = function (ms) {
 
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
     // Weapons
@@ -382,6 +391,7 @@ function Player(layer) {
 }
 
 Player.maxHealth = 500;
+Player.maxShields = 500;
 Player.shipWidth = 40;
 Player.shipHeight = 48;
 Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Player.shipHeight / 2, Player.shipWidth, Player.shipHeight);
@@ -408,7 +418,17 @@ Player.prototype.setFiring = function (firing) {
 };
 
 Player.prototype.takeDamage = function (shot) {
-    this.health -= shot.damage;
+    var damage = shot.damage;
+    if (this.shields) {
+        // TODO: Any special effect if shields absorbed the hit? No knockback?
+        var shieldDamage = Math.min(damage, this.shields);
+        this.shields -= shieldDamage;
+        damage -= shieldDamage;
+    }
+
+    if (damage) {
+        this.health -= shot.damage;
+    }
 
     // Knock back
     // TODO: Should this also knock horizontally?
@@ -998,9 +1018,9 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
 };
 
 Level.prototype.addPowerUps = function (start, duration, firsts) {
-    firsts = firsts || [0, 100 * 20, 1000 * 20, 500 * 20];
-    var randomModifiers = [200 * 20, 200 * 20, 500 * 20, 900 * 20];
-    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20, 4000 * 20];
+    firsts = firsts || [0, 100 * 20, 1000 * 20, 1200 * 20, 300 * 20];
+    var randomModifiers = [200 * 20, 200 * 20, 500 * 20, 500 * 20, 500 * 20];
+    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20, 4000 * 20, 2500 * 20];
 
     // Add each type of power-up
     var powerupCount = firsts.length;
@@ -1059,8 +1079,9 @@ function Display(layer, player) {
 
     var backgrounds = [Display.statLeftImage];
     this.healthBar = Display.healthBarImage;
+    this.shieldBar = Display.shieldBarImage;
 
-    this.elements = backgrounds.concat(this.ammo, [this.healthBar]);
+    this.elements = backgrounds.concat(this.ammo, [this.healthBar, this.shieldBar]);
 }
 
 // TODO: Need a way to share the underlying image after creating the right side version of this
@@ -1073,6 +1094,7 @@ Display.ammoBarImages = [
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
 Display.healthBarImage = new Image('images/healthBar.png', 'red', -299, Display.barBaseY + Display.barMaxHeight, 24, 171);
+Display.shieldBarImage = new Image('images/shieldBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
@@ -1087,6 +1109,11 @@ Display.prototype.update = function (ms) {
         var height = Math.max(0, this.player.health / Player.maxHealth * Display.barMaxHeight);
         this.healthBar.height = height;
         this.healthBar.y = Display.barBaseY + height;
+
+        // Update shields
+        height = Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight);
+        this.shieldBar.height = height;
+        this.shieldBar.y = Display.barBaseY + height;
     }
 };
 
