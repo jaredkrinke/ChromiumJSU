@@ -333,8 +333,33 @@ Ship.prototype.updateOffsets = function (ms) {
     this.offsetY *= factor;
 };
 
+function PlayerShields() {
+    Entity.call(this);
+    this.elements = [PlayerShields.shieldImage];
+    this.opacity = 0;
+}
+
+PlayerShields.shieldWidth = 68;
+PlayerShields.shieldHeight = 68;
+PlayerShields.shieldFadePeriod = 500;
+PlayerShields.maxOpacity = 0.9;
+PlayerShields.shieldImage = new Image('images/playerShields.png', 'blue', -PlayerShields.shieldWidth / 2, PlayerShields.shieldHeight / 2, PlayerShields.shieldWidth, PlayerShields.shieldHeight);
+PlayerShields.prototype = Object.create(Entity.prototype);
+
+PlayerShields.prototype.flash = function () {
+    this.opacity = PlayerShields.maxOpacity;
+};
+
+PlayerShields.prototype.update = function (ms) {
+    if (this.opacity > 0) {
+        this.opacity = Math.max(0, this.opacity - ms / PlayerShields.shieldFadePeriod * PlayerShields.maxOpacity);
+        this.angle = 2 * Math.PI * Math.random();
+    }
+};
+
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    this.shieldImage = new PlayerShields();
     this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
@@ -388,6 +413,7 @@ function Player(layer) {
 
     // Set up children
     this.children = this.guns.slice();
+    this.children.push(this.shieldImage);
 }
 
 Player.maxHealth = 500;
@@ -424,6 +450,7 @@ Player.prototype.takeDamage = function (shot) {
         var shieldDamage = Math.min(damage, this.shields);
         this.shields -= shieldDamage;
         damage -= shieldDamage;
+        this.shieldImage.flash();
     }
 
     if (damage) {
