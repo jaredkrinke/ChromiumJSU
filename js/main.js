@@ -20,7 +20,7 @@ PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow3Image = new Image('images/powerupShadow3.png', 'orange', -1.25, 1.25, 2.5, 2.5);
-PowerUp.shadow3Image = new Image('images/powerupShadow4.png', 'purple', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow4Image = new Image('images/powerupShadow4.png', 'purple', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
@@ -65,7 +65,7 @@ PowerUps = [
         }, layer, x, y);
     },
     function (layer, x, y) {
-        return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
+        return new PowerUp(PowerUp.shieldImage, PowerUp.shadow4Image, function () {
             if (this.layer.player) {
                 this.layer.player.shields = Player.maxShields;
             }
@@ -1077,15 +1077,17 @@ function Display(layer, player) {
         this.ammo[i] = ammo;
     }
 
-    var backgrounds = [Display.statLeftImage];
+    var backgrounds = [Display.statLeftImage, Display.statRightImage, Display.statTopLeftImage];
     this.healthBar = Display.healthBarImage;
     this.shieldBar = Display.shieldBarImage;
 
     this.elements = backgrounds.concat(this.ammo, [this.healthBar, this.shieldBar]);
 }
 
-// TODO: Need a way to share the underlying image after creating the right side version of this
+// TODO: Need a way to share the underlying image
 Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
+Display.statRightImage = new Image('images/statBackground.png', 'darkgray', 320 - 65, 240, 65, 480);
+Display.statTopLeftImage = new Image('images/statTop.png', 'darkgray', -320, 240, 65, 94, 0.5);
 Display.ammoBarImages = [
     new Image('images/ammoBar0.png', 'yellow'),
     new Image('images/ammoBar1.png', 'green'),
@@ -1093,8 +1095,8 @@ Display.ammoBarImages = [
 ];
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
-Display.healthBarImage = new Image('images/healthBar.png', 'red', -299, Display.barBaseY + Display.barMaxHeight, 24, 171);
-Display.shieldBarImage = new Image('images/shieldBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
+Display.shieldBarImage = new Image('images/shieldBar.png', 'red', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
