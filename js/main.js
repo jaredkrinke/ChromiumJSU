@@ -21,6 +21,7 @@ PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.
 PowerUp.shadow2Image = new Image('images/powerupShadow2.png', 'blue', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow3Image = new Image('images/powerupShadow3.png', 'orange', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow4Image = new Image('images/powerupShadow4.png', 'purple', -1.25, 1.25, 2.5, 2.5);
+PowerUp.shadow5Image = new Image('images/powerupShadow5.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.prototype = Object.create(Entity.prototype);
 
 PowerUp.prototype.update = function (ms) {
@@ -66,8 +67,16 @@ PowerUps = [
     },
     function (layer, x, y) {
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow4Image, function () {
-            if (this.layer.player) {
+            if (this.layer.player && this.layer.player.shields < Player.maxShields) {
                 this.layer.player.shields = Player.maxShields;
+            }
+        }, layer, x, y);
+    },
+    function (layer, x, y) {
+        return new PowerUp(PowerUp.shieldImage, PowerUp.shadow5Image, function () {
+            if (this.layer.player) {
+                this.layer.player.health = Player.maxHealth;
+                this.layer.player.shields = 2 * Player.maxShields;
             }
         }, layer, x, y);
     },
@@ -443,8 +452,7 @@ Player.prototype.setFiring = function (firing) {
     }
 };
 
-Player.prototype.takeDamage = function (shot) {
-    var damage = shot.damage;
+Player.prototype.takeDamage = function (damage) {
     if (this.shields) {
         // TODO: Any special effect if shields absorbed the hit? No knockback?
         var shieldDamage = Math.min(damage, this.shields);
@@ -454,12 +462,8 @@ Player.prototype.takeDamage = function (shot) {
     }
 
     if (damage) {
-        this.health -= shot.damage;
+        this.health -= damage;
     }
-
-    // Knock back
-    // TODO: Should this also knock horizontally?
-    this.offsetY += shot.damage / 0.87 * shot.vy;
 };
 
 Player.prototype.update = function (ms) {
@@ -1045,9 +1049,9 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
 };
 
 Level.prototype.addPowerUps = function (start, duration, firsts) {
-    firsts = firsts || [0, 100 * 20, 1000 * 20, 1200 * 20, 300 * 20];
-    var randomModifiers = [200 * 20, 200 * 20, 500 * 20, 500 * 20, 500 * 20];
-    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20, 4000 * 20, 2500 * 20];
+    firsts = firsts || [0, 100 * 20, 1000 * 20, 1200 * 20, 300 * 20, 1000 * 20];
+    var randomModifiers = [200 * 20, 200 * 20, 500 * 20, 500 * 20, 500 * 20, 1500 * 20];
+    var frequencies = [2000 * 20, 2500 * 20, 4000 * 20, 4000 * 20, 2500 * 20, 3000 * 20];
 
     // Add each type of power-up
     var powerupCount = firsts.length;
@@ -1140,7 +1144,7 @@ Display.prototype.update = function (ms) {
         this.healthBar.y = Display.barBaseY + height;
 
         // Update shields
-        height = Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight);
+        height = Math.min(Display.barMaxHeight, Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight));
         this.shieldBar.height = height;
         this.shieldBar.y = Display.barBaseY + height;
     }
@@ -1360,8 +1364,12 @@ GameLayer.prototype.updateGame = function (ms) {
             if (this.player && this.checkShotCollision(shot, this.player)) {
                 // TODO: Explosion
                 // TODO: Shields
-                this.player.takeDamage(shot);
+                this.player.takeDamage(shot.damage);
                 remove = true;
+
+                // Knock back
+                // TODO: Should this also knock horizontally?
+                this.player.offsetY += shot.damage / 0.87 * shot.vy;
 
                 // Add explosion
                 shot.explosionTemplate.instantiate(this, shot.x, shot.y);
@@ -1396,7 +1404,7 @@ GameLayer.prototype.updateGame = function (ms) {
         } else if (this.player && this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
             // TODO: Move to helper on Player?
             var damage = Math.min(35, enemy.health / 2);
-            this.player.health -= damage;
+            this.player.takeDamage(damage);
             // TODO: Shields
             enemy.health -= 40;
 
