@@ -41,6 +41,7 @@ PowerUps = [
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow0Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[0] = 150;
+                this.layer.ammoCollected.fire();
             }
         }, layer, x, y);
     },
@@ -48,6 +49,7 @@ PowerUps = [
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow1Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[1] = 150;
+                this.layer.ammoCollected.fire();
             }
         }, layer, x, y);
     },
@@ -55,6 +57,7 @@ PowerUps = [
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
             if (this.layer.player) {
                 this.layer.player.ammo[2] = 150;
+                this.layer.ammoCollected.fire();
             }
         }, layer, x, y);
     },
@@ -1132,12 +1135,19 @@ function Display(layer, player) {
         this.ammo[i] = ammo;
     }
 
-    var backgrounds = [Display.statLeftImage, Display.statRightImage, Display.statTopLeftImage];
+    this.ammoBackground = Display.statTopLeftImage;
+    var backgrounds = [Display.statLeftImage, Display.statRightImage, this.ammoBackground];
     this.healthBar = Display.healthBarImage;
     this.shieldBar = Display.shieldBarImage;
     this.superShieldBar = Display.superShieldBarImage;
 
     this.elements = backgrounds.concat(this.ammo, [this.healthBar, this.shieldBar, this.superShieldBar]);
+
+    // Flash the ammo area's background when ammo is collected
+    var display = this;
+    layer.ammoCollected.addListener(function () {
+        display.ammoBackground.opacity = 1;
+    });
 }
 
 // TODO: Need a way to share the underlying image
@@ -1151,6 +1161,8 @@ Display.ammoBarImages = [
 ];
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
+Display.fadePeriod = 1500;
+Display.defaultOpacity = 0.2;
 Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
 Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
@@ -1177,10 +1189,17 @@ Display.prototype.update = function (ms) {
         this.superShieldBar.y = this.shieldBar.y;
         this.superShieldBar.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
     }
+
+    if (this.ammoBackground.opacity > Display.defaultOpacity) {
+        this.ammoBackground.opacity = Math.max(Display.defaultOpacity, this.ammoBackground.opacity - (1 - Display.defaultOpacity) / Display.fadePeriod * ms);
+    }
 };
 
 function GameLayer() {
     Layer.call(this);
+
+    this.ammoCollected = new Event();
+
     this.addEntity(new Master(this));
     this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
     this.ground = this.addEntity(new Ground(GroundTemplates.metal));
