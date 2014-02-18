@@ -366,9 +366,28 @@ PlayerShields.prototype.update = function (ms) {
     }
 };
 
+function PlayerSuperShields(player) {
+    Entity.call(this);
+    this.player = player;
+    this.elements = [PlayerSuperShields.image];
+    this.opacity = 0;
+}
+
+PlayerSuperShields.maxOpacity = 0.9;
+PlayerSuperShields.image = new Image('images/playerSuperShields.png', 'blue', -PlayerShields.shieldWidth / 2, PlayerShields.shieldHeight / 2, PlayerShields.shieldWidth, PlayerShields.shieldHeight);
+PlayerSuperShields.prototype = Object.create(Entity.prototype);
+
+PlayerSuperShields.prototype.update = function (ms) {
+    this.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
+    if (this.opacity > 0) {
+        this.angle = 2 * Math.PI * Math.random();
+    }
+};
+
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.shieldImage = new PlayerShields();
+    this.superShieldImage = new PlayerSuperShields(this);
     this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
@@ -423,6 +442,7 @@ function Player(layer) {
     // Set up children
     this.children = this.guns.slice();
     this.children.push(this.shieldImage);
+    this.children.push(this.superShieldImage);
 }
 
 Player.maxHealth = 500;
@@ -458,7 +478,11 @@ Player.prototype.takeDamage = function (damage) {
         var shieldDamage = Math.min(damage, this.shields);
         this.shields -= shieldDamage;
         damage -= shieldDamage;
-        this.shieldImage.flash();
+
+        // Show a shield flash if super shields aren't in effect
+        if (this.shields < Player.maxShields) {
+            this.shieldImage.flash();
+        }
     }
 
     if (damage) {
