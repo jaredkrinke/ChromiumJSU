@@ -2,9 +2,7 @@
 Ray gun shots look like they're not aligned correctly
 
 For alpha 2:
-Add power-ups
 Add UI
-Add "don't let enemies through" logic/text
 Add other special effects (boss damage, power-up electricity, etc.)
 
 For alpha 3:
@@ -13,7 +11,9 @@ Preload images before the game can start
 Add keyboard controls
 Add shields
 Knock enemies when hit
+Adjust knock based on shields?
 Make it more obvious when the player gets hit
+Add "don't let enemies through" logic/text?
 
 For beta 1:
 Add menus

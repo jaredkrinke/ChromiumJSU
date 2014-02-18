@@ -1135,8 +1135,9 @@ function Display(layer, player) {
     var backgrounds = [Display.statLeftImage, Display.statRightImage, Display.statTopLeftImage];
     this.healthBar = Display.healthBarImage;
     this.shieldBar = Display.shieldBarImage;
+    this.superShieldBar = Display.superShieldBarImage;
 
-    this.elements = backgrounds.concat(this.ammo, [this.healthBar, this.shieldBar]);
+    this.elements = backgrounds.concat(this.ammo, [this.healthBar, this.shieldBar, this.superShieldBar]);
 }
 
 // TODO: Need a way to share the underlying image
@@ -1151,7 +1152,8 @@ Display.ammoBarImages = [
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
 Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
-Display.shieldBarImage = new Image('images/shieldBar.png', 'red', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
@@ -1170,7 +1172,10 @@ Display.prototype.update = function (ms) {
         // Update shields
         height = Math.min(Display.barMaxHeight, Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight));
         this.shieldBar.height = height;
+        this.superShieldBar.height = height;
         this.shieldBar.y = Display.barBaseY + height;
+        this.superShieldBar.y = this.shieldBar.y;
+        this.superShieldBar.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
     }
 };
 
