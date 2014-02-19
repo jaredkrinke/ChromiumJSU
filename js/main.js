@@ -639,7 +639,7 @@ Omni.prototype.updateTargetLocation = function (ms) {
 
 function RayGun(layer, x, y) {
     Enemy.call(this, layer, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000,
-        [new Gun(layer, this, 0, -14, 20, 0, RayGunShot)],
+        [new Gun(layer, this, 0, -31, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
@@ -1233,7 +1233,7 @@ GameLayer.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(RayGun, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
