@@ -3,10 +3,10 @@
 For alpha 2:
 Add UI
 Add other special effects (boss damage, power-up electricity, etc.)
+Preload images before the game can start
 
 For alpha 3:
 Sound
-Preload images before the game can start
 Add keyboard controls
 Add shields
 Knock enemies when hit
