@@ -320,6 +320,7 @@ function Ship(layer, x, y, shipWidth, shipHeight, health, mass, explosionTemplat
     this.layer = layer;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
+    // TODO: This whole system of target vs. actual vs. offset is messy and confusing
     this.targetX = x;
     this.targetY = y;
     this.offsetX = 0;
@@ -661,7 +662,7 @@ RayGun.prototype = Object.create(Enemy.prototype);
 RayGun.prototype.updateTargetLocation = function (ms) {
     this.timer += ms;
     if (this.target) {
-        var deltaX = this.target.x - this.x;
+        var deltaX = this.target.x - this.targetX;
         var deltaY = this.target.y - this.y;
         var deltaXMagnitude = Math.abs(deltaX);
         var oscillateDistance = 85;
@@ -683,7 +684,7 @@ RayGun.prototype.updateTargetLocation = function (ms) {
         this.lastMoveY *= 0.9;
         this.lastMoveY += 0.001 * deltaY;
 
-        this.targetX = this.x + (this.movementFactor * this.lastMoveX + dx);
+        this.targetX = this.targetX + (this.movementFactor * this.lastMoveX + dx);
     }
 
     this.targetY += this.lastMoveY - this.speed * ms;
@@ -1233,7 +1234,7 @@ GameLayer.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(RayGun, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
