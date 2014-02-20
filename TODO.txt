@@ -1,22 +1,30 @@
 ﻿Bugs:
 
 For alpha 2:
-Add UI
-Add other special effects (boss damage, power-up electricity, etc.)
+Add explosions during collisions (one on player, one on enemy)
+Add mass to enemy ships
+Add power-up pick-up flash (shrinking sparkle)
+Add power-up electricity flash on the UI
+Add ammo warning flashes
+Offsets for enemy ship explosions
 Preload images before the game can start
+Make it more obvious when the player gets hit
 
 For alpha 3:
 Sound
-Add keyboard controls
-Add shields
+Add keyboard controls?
 Knock enemies when hit
 Adjust knock based on shields?
-Make it more obvious when the player gets hit
+Super shield sparkles
 Add "don't let enemies through" logic/text?
 
 For beta 1:
 Add menus
 Complete more levels
+Pause button?
 
 For final:
 Add touch controls
+
+Consider:
+Enemy ammo could "sparkle" by flipping sign on width/height randomly (the original does this)
