@@ -312,10 +312,11 @@ Gun.prototype.update = function (ms) {
     }
 };
 
-function Ship(layer, x, y, shipWidth, shipHeight, health, explosionTemplate) {
+function Ship(layer, x, y, shipWidth, shipHeight, health, mass, explosionTemplate) {
     Entity.call(this, x, y);
     this.shipWidth = shipWidth;
     this.shipHeight = shipHeight;
+    this.mass = mass;
     this.layer = layer;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
@@ -339,7 +340,7 @@ Ship.prototype.offset = function (x, y) {
 
 Ship.prototype.updateOffsets = function (ms) {
     // Scale down temporary offsets
-    var factor = (1 - 0.9 * ms / 250);
+    var factor = (1 - 0.9 * ms / 1000);
     factor *= factor;
     this.offsetX *= factor;
     this.offsetY *= factor;
@@ -388,7 +389,7 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(layer) {
-    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
     this.shieldImage = new PlayerShields();
     this.superShieldImage = new PlayerSuperShields(this);
     this.shields = 0;
@@ -508,8 +509,8 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, guns, explosionTemplate) {
-    Ship.call(this, layer, x, y, shipWidth, shipHeight, health, explosionTemplate);
+function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate) {
+    Ship.call(this, layer, x, y, shipWidth, shipHeight, health, mass, explosionTemplate);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
@@ -556,7 +557,7 @@ Enemy.prototype.update = function (ms) {
 // TODO: Random factor?
 function Straight(layer, x, y) {
     //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065, 110,
+    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065, 110, 200,
         [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
@@ -600,13 +601,12 @@ Spinner.prototype.update = function (ms) {
 };
 
 function Omni(layer, x, y) {
-    // TODO: Mass
     var guns = [];
     for (var i = 0; i < 18; i++) {
         guns.push(new OmniGun(layer, this, 0, 0, i * 20));
     }
 
-    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, guns, new ExplosionSequence([
+    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, 143, guns, new ExplosionSequence([
         [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
         [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
         [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
@@ -638,7 +638,7 @@ Omni.prototype.updateTargetLocation = function (ms) {
 };
 
 function RayGun(layer, x, y) {
-    Enemy.call(this, layer, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000,
+    Enemy.call(this, layer, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000, 500,
         [new Gun(layer, this, 0, -31, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
@@ -741,7 +741,7 @@ function Boss0(layer, x, y) {
         explosionFrequency *= 1.1;
     }
 
-    Enemy.call(this, layer, x, y, width, height, 0.028, 10000, guns, new ExplosionSequence(explosions));
+    Enemy.call(this, layer, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -1459,13 +1459,13 @@ GameLayer.prototype.updateGame = function (ms) {
             // Knock player
             var deltaX = (this.player.x - enemy.x);
             var deltaY = (this.player.y - enemy.y);
-            this.player.offsetX += deltaX * damage * 0.03;
-            this.player.offsetY += deltaY * damage * 0.03;
+            this.player.offsetX += deltaX * damage * 0.06;
+            this.player.offsetY += deltaY * damage * 0.06;
 
             // Knock enemy
-            // TODO: Add a mass factor
-            enemy.offsetX -= deltaX / 2;
-            enemy.offsetY -= deltaY / 4;
+            var massFactor = this.player.mass / enemy.mass;
+            enemy.offsetX -= deltaX * massFactor;
+            enemy.offsetY -= deltaY * massFactor / 2;
 
             // Add explosions
             var explosionOffsetX = 9 * (Math.random() * 2 - 1);

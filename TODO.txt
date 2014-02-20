@@ -1,7 +1,8 @@
 ﻿Bugs:
+Omnis get all messed up when they collide with the player
+Collision offsets shrink too quickly
 
 For alpha 2:
-Add mass to enemy ships
 Add power-up pick-up flash (shrinking sparkle)
 Add power-up electricity flash on the UI
 Add ammo warning flashes
