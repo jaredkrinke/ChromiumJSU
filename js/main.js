@@ -340,8 +340,7 @@ Ship.prototype.offset = function (x, y) {
 
 Ship.prototype.updateOffsets = function (ms) {
     // Scale down temporary offsets
-    var factor = (1 - 0.9 * ms / 1000);
-    factor *= factor;
+    var factor = 1 - (0.015 * ms / 20);
     this.offsetX *= factor;
     this.offsetY *= factor;
 };
@@ -1459,8 +1458,8 @@ GameLayer.prototype.updateGame = function (ms) {
             // Knock player
             var deltaX = (this.player.x - enemy.x);
             var deltaY = (this.player.y - enemy.y);
-            this.player.offsetX += deltaX * damage * 0.06;
-            this.player.offsetY += deltaY * damage * 0.06;
+            this.player.offsetX += deltaX * damage * 0.04;
+            this.player.offsetY += deltaY * damage * 0.04;
 
             // Knock enemy
             var massFactor = this.player.mass / enemy.mass;
