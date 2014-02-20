@@ -1,7 +1,6 @@
 ﻿Bugs:
 
 For alpha 2:
-Add explosions during collisions (one on player, one on enemy)
 Add mass to enemy ships
 Add power-up pick-up flash (shrinking sparkle)
 Add power-up electricity flash on the UI

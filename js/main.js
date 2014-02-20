@@ -1214,6 +1214,7 @@ function GameLayer() {
 
 GameLayer.boundX = 640;
 GameLayer.boundY = 284;
+GameLayer.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
 GameLayer.prototype = Object.create(Layer.prototype);
 
 GameLayer.prototype.reset = function () {
@@ -1453,7 +1454,6 @@ GameLayer.prototype.updateGame = function (ms) {
             // TODO: Move to helper on Player?
             var damage = Math.min(35, enemy.health / 2);
             this.player.takeDamage(damage);
-            // TODO: Shields
             enemy.health -= 40;
 
             // Knock player
@@ -1466,6 +1466,16 @@ GameLayer.prototype.updateGame = function (ms) {
             // TODO: Add a mass factor
             enemy.offsetX -= deltaX / 2;
             enemy.offsetY -= deltaY / 4;
+
+            // Add explosions
+            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
+            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
+
+            GameLayer.collisionExplosionTemplate.instantiate(this, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
+
+            if (this.player.shields <= 0) {
+                GameLayer.collisionExplosionTemplate.instantiate(this, this.player.x + explosionOffsetX, this.player.y + explosionOffsetY + 6);
+            }
         }
 
         if (remove) {
