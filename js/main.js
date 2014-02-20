@@ -625,11 +625,11 @@ Omni.prototype = Object.create(Enemy.prototype);
 
 Omni.prototype.updateTargetLocation = function (ms) {
     if (this.target) {
-        var deltaX = this.target.x - this.x;
+        var deltaX = this.target.x - this.targetX;
         // Adjust x movement slowly
         this.lastMoveX *= 0.9;
         this.lastMoveX += (0.1 * (0.014 * deltaX));
-        this.targetX = this.x + (this.movementFactor * this.lastMoveX);
+        this.targetX = this.targetX + (this.movementFactor * this.lastMoveX);
     }
 
     this.targetY -= this.speed * ms;
