@@ -4,7 +4,6 @@ For alpha 2:
 Add power-up pick-up flash (shrinking sparkle)
 Add power-up electricity flash on the UI
 Add ammo warning flashes
-Offsets for enemy ship explosions
 Preload images before the game can start
 Make it more obvious when the player gets hit
 

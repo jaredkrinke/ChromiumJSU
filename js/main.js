@@ -561,6 +561,8 @@ function Straight(layer, x, y) {
         [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
         ]));
     this.elements = [Straight.image];
@@ -642,6 +644,8 @@ function RayGun(layer, x, y) {
         [new Gun(layer, this, 0, -31, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)],
