@@ -1125,6 +1125,8 @@ Master.prototype.update = function (ms) {
 function Display(layer, player) {
     this.layer = layer;
     this.player = player;
+    this.blinkTimer = 0;
+    this.blink = false;
 
     var x = -299;
     var y = 227;
@@ -1167,17 +1169,26 @@ Display.barBaseY = -222;
 Display.barMaxHeight = 171;
 Display.fadePeriod = 1500;
 Display.defaultOpacity = 0.2;
+Display.blinkPeriod = 300;
+Display.blinkOpacity = 0.5;
 Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
 Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
+    this.blinkTimer += ms;
+    while (this.blinkTimer > Display.blinkPeriod) {
+        this.blink = !this.blink;
+        this.blinkTimer -= Display.blinkPeriod;
+    }
+
     if (this.player) {
         // Update ammo
         var count = this.player.ammo.length;
         for (var i = 0; i < count; i++) {
             this.ammo[i].height = 1.5 * this.player.ammo[i];
+            this.ammo[i].opacity = (this.blink || this.player.ammo[i] > 50) ? 1 : Display.blinkOpacity;
         }
 
         // Update health
