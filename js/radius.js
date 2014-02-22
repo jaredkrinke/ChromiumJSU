@@ -390,9 +390,21 @@ Layer.prototype = {
                                 context.translate(0.5, 0.5);
                                 context.rotate(element.angle);
                                 context.translate(-0.5, -0.5);
-                                context.drawImage(element.img, 0, 0, 1, 1);
+                                if (element instanceof ImageRegion) {
+                                    var imgWidth = element.img.width;
+                                    var imgHeight = element.img.height;
+                                    context.drawImage(element.img, element.sx / imgWidth, element.sy / imgHeight, element.swidth / imgWidth, element.sheight / imgHeight, 0, 0, 1, 1);
+                                } else {
+                                    context.drawImage(element.img, 0, 0, 1, 1);
+                                }
                             } else {
-                                context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                                if (element instanceof ImageRegion) {
+                                    var imgWidth = element.img.width;
+                                    var imgHeight = element.img.height;
+                                    context.drawImage(element.img, element.sx * imgWidth, element.sy * imgHeight, element.swidth * imgWidth, element.sheight * imgHeight, element.x, -element.y, element.width, element.height);
+                                } else {
+                                    context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                                }
                             }
                         } else {
                             // Color is only supported for text/shapes
@@ -495,6 +507,16 @@ function Image(source, color, x, y, width, height, opacity) {
 
     this.img.src = source;
 }
+
+function ImageRegion(source, color, sx, sy, swidth, sheight, x, y, width, height, opacity) {
+    Image.call(this, source, color, x, y, width, height, opacity);
+    this.sx = sx;
+    this.sy = sy;
+    this.swidth = swidth;
+    this.sheight = sheight;
+}
+
+ImageRegion.prototype = Object.create(Image.prototype);
 
 // TODO: Should this just take a height value instead of a font?
 function Text(text, font, x, y, align, baseline, lineHeight) {

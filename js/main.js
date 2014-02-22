@@ -117,13 +117,18 @@ PowerUps = [
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
             if (this.layer.player) {
                 this.layer.player.health = Player.maxHealth;
+                this.layer.healthCollected.fire();
             }
         }, layer, x, y);
     },
     function (layer, x, y) {
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow4Image, function () {
-            if (this.layer.player && this.layer.player.shields < Player.maxShields) {
-                this.layer.player.shields = Player.maxShields;
+            if (this.layer.player) {
+                if (this.layer.player.shields < Player.maxShields) {
+                    this.layer.player.shields = Player.maxShields;
+                }
+
+                this.layer.shieldsCollected.fire();
             }
         }, layer, x, y);
     },
@@ -132,6 +137,8 @@ PowerUps = [
             if (this.layer.player) {
                 this.layer.player.health = Player.maxHealth;
                 this.layer.player.shields = 2 * Player.maxShields;
+                this.layer.healthCollected.fire();
+                this.layer.shieldsCollected.fire();
             }
         }, layer, x, y);
     },
@@ -1136,6 +1143,56 @@ Master.prototype.update = function (ms) {
     this.layer.updateGame(ms);
 };
 
+function Electricity(x, y, width, height) {
+    Entity.call(this, x, y);
+    this.totalHeight = height;
+    this.elements = [];
+    for (var i = 0; i < 2; i++) {
+        this.elements.push(new ImageRegion(Electricity.imageSrc, 'blue', 0, 0, 1, 0.5, 0, height / 2, width, height / 2));
+    }
+
+    this.timer = Electricity.period;
+    this.update(0);
+}
+
+// TODO: Make sure this image doesn't get loaded multiple times by the browser...
+Electricity.imageSrc = 'images/electricity.png'
+Electricity.period = 400;
+Electricity.prototype = Object.create(Entity.prototype);
+
+Electricity.prototype.update = function (ms) {
+    this.timer += ms;
+
+    if (this.timer >= Electricity.period) {
+        this.opacity = 0;
+    } else {
+        // Move
+        // TODO: Base on actual screen dimensions?
+        this.opacity = 1;
+        this.y = -240 + (480 + this.totalHeight) * this.timer / Electricity.period;
+
+        // Randomly scroll texture
+        var x = Math.random();
+        var e1 = this.elements[0];
+        var e2 = this.elements[1];
+
+        e1.y = 0;
+        e1.sy = x;
+        e1.sheight = 1 - x;
+        e1.height = e1.sheight * this.totalHeight;
+
+        e2.y = -e1.height;
+        e2.sy = 0;
+        e2.sheight = x;
+        e2.height = e2.sheight * this.totalHeight;
+    }
+};
+
+Electricity.prototype.flash = function () {
+    this.timer = 0;
+    this.update(0);
+};
+
 function Display(layer, player) {
     this.layer = layer;
     this.player = player;
@@ -1168,6 +1225,17 @@ function Display(layer, player) {
     layer.ammoCollected.addListener(function () {
         display.ammoBackground.opacity = 1;
     });
+
+    this.electricityLeft = new Electricity(-320, 0, 65, 160);
+    this.electricityRight = new Electricity(320 - 65, 0, 65, 160);
+    layer.healthCollected.addListener(function () {
+        display.electricityRight.flash();
+    });
+    layer.shieldsCollected.addListener(function () {
+        display.electricityLeft.flash();
+    });
+
+    this.children = [this.electricityLeft, this.electricityRight];
 }
 
 // TODO: Need a way to share the underlying image
@@ -1225,12 +1293,16 @@ Display.prototype.update = function (ms) {
     if (this.ammoBackground.opacity > Display.defaultOpacity) {
         this.ammoBackground.opacity = Math.max(Display.defaultOpacity, this.ammoBackground.opacity - (1 - Display.defaultOpacity) / Display.fadePeriod * ms);
     }
+
+    this.updateChildren(ms);
 };
 
 function GameLayer() {
     Layer.call(this);
 
     this.ammoCollected = new Event();
+    this.healthCollected = new Event();
+    this.shieldsCollected = new Event();
 
     this.addEntity(new Master(this));
     this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));

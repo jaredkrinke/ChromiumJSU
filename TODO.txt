@@ -2,7 +2,6 @@
 Ship shouldn't just jump instantaneously when using touch input (i.e. with non-contiguous mouse move events)
 
 For alpha 2:
-Add power-up electricity flash on the UI
 Preload images before the game can start
 Make it more obvious when the player gets hit
 
