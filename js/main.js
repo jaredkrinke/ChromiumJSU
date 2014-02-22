@@ -1171,6 +1171,8 @@ Display.fadePeriod = 1500;
 Display.defaultOpacity = 0.2;
 Display.blinkPeriod = 300;
 Display.blinkOpacity = 0.5;
+Display.ammoBlinkThreshold = 50;
+Display.healthBlinkThreshold = Player.maxHealth * 0.3;
 Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
 Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
@@ -1188,13 +1190,14 @@ Display.prototype.update = function (ms) {
         var count = this.player.ammo.length;
         for (var i = 0; i < count; i++) {
             this.ammo[i].height = 1.5 * this.player.ammo[i];
-            this.ammo[i].opacity = (this.blink || this.player.ammo[i] > 50) ? 1 : Display.blinkOpacity;
+            this.ammo[i].opacity = (this.blink || this.player.ammo[i] > Display.ammoBlinkThreshold) ? 1 : Display.blinkOpacity;
         }
 
         // Update health
         var height = Math.max(0, this.player.health / Player.maxHealth * Display.barMaxHeight);
         this.healthBar.height = height;
         this.healthBar.y = Display.barBaseY + height;
+        this.healthBar.opacity = (this.blink || this.player.shields > 0 || this.player.health > Display.healthBlinkThreshold) ? 1 : Display.blinkOpacity;
 
         // Update shields
         height = Math.min(Display.barMaxHeight, Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight));
