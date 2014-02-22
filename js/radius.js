@@ -499,7 +499,7 @@ function Image(source, color, x, y, width, height, opacity) {
     this.loaded = false;
 
     // Get the image entry from the cache
-    this.image = Radius.images.cache[source];
+    this.image = Radius.images.get(source);
 }
 
 function ImageRegion(source, color, sx, sy, swidth, sheight, x, y, width, height, opacity) {
@@ -814,46 +814,57 @@ function ImageCache() {
     this.cache = {};
 }
 
+ImageCache.prototype.get = function (source) {
+    // TODO: Retrieve the image on demand?
+    var entry = this.cache[source];
+    if (!entry) {
+        entry = { loaded: false };
+        this.cache[source] = entry;
+    }
+    return entry;
+};
+
 ImageCache.prototype.load = function (sources) {
     // Initialize count of images to load
     var batchCount = sources.length;
     var completedCount = 0;
     var handlers = {};
+    var imageCache = this;
     for (var i = 0; i < batchCount; i++) {
-        // Create the entry in the cache (including the element)
-        var source = sources[i];
-        var image = document.createElement('img');
-        var entry = {
-            element: image,
-            loaded: false
-        };
+        (function (i) {
+            // Ensure an entry in the cache exists
+            // TODO: Handle multiple requests to load the same image?
+            var source = sources[i];
+            var entry = imageCache.get(source);
 
-        this.cache[source] = entry;
+            var image = document.createElement('img');
+            entry.element = image;
 
-        // Setup image-loading callbacks
-        // TODO: Error handler
-        image.onload = function () {
-            // Make the image as loaded
-            entry.loaded = true;
+            // Setup image-loading callbacks
+            // TODO: Error handler
+            image.onload = function () {
+                // Make the image as loaded
+                entry.loaded = true;
 
-            // Call handlers, if provided
-            if (++completedCount === batchCount) {
-                // Fulfilled
-                handler = handlers.fulfilled;
-                if (handler) {
-                    handler();
+                // Call handlers, if provided
+                if (++completedCount === batchCount) {
+                    // Fulfilled
+                    handler = handlers.fulfilled;
+                    if (handler) {
+                        handler();
+                    }
+                } else {
+                    // Progress made
+                    handler = handlers.progress;
+                    if (handler) {
+                        handler(completedCount / batchCount);
+                    }
                 }
-            } else {
-                // Progress made
-                handler = handlers.progress;
-                if (handler) {
-                    handler(completedCount / batchCount);
-                }
-            }
-        };
-        
-        // Start loading the image
-        this.cache[source].element.src = source;
+            };
+
+            // Start loading the image
+            image.src = source;
+        })(i);
     }
 
     return {

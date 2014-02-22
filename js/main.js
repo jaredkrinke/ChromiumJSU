@@ -1752,5 +1752,60 @@ GameLayer.prototype.loadLevel1 = function (layer) {
 
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
-    Radius.start(new GameLayer());
+
+    // Pre-load images
+    Radius.images.load([
+        'images/ammoBar0.png',
+        'images/ammoBar1.png',
+        'images/ammoBar2.png',
+        'images/blink.png',
+        'images/boss0.png',
+        'images/bullet.png',
+        'images/bulletExplosion.png',
+        'images/bulletFlash.png',
+        'images/emp.png',
+        'images/empExplosion.png',
+        'images/empFlash.png',
+        'images/enemyExplosion.png',
+        'images/groundMetal.png',
+        'images/groundMetalHighlight.png',
+        'images/healthBar.png',
+        'images/omni.png',
+        'images/omniExplosion.png',
+        'images/omniShot.png',
+        'images/omniShotExplosion.png',
+        'images/omniSpinner.png',
+        'images/plasma.png',
+        'images/plasmaExplosion.png',
+        'images/plasmaFlash.png',
+        'images/player.png',
+        'images/playerShields.png',
+        'images/playerSuperShields.png',
+        'images/powerupAmmo.png',
+        'images/powerupShadow0.png',
+        'images/powerupShadow1.png',
+        'images/powerupShadow2.png',
+        'images/powerupShadow3.png',
+        'images/powerupShadow4.png',
+        'images/powerupShadow5.png',
+        'images/powerupShield.png',
+        'images/rayGun.png',
+        'images/rayGunShot.png',
+        'images/rayGunShotExplosion.png',
+        'images/shieldBar.png',
+        'images/statBackground.png',
+        'images/statTop.png',
+        'images/straight.png',
+        'images/straightShot.png',
+        'images/straightShotExplosion.png',
+        'images/superShieldBar.png',
+        'images/tankShot.png',
+        'images/tankShotExplosion.png',
+        'images/tankShotFlash.png',
+    ]).then(function () {
+        // Done loading
+        Radius.start(new GameLayer());
+    }, null, function (progress) {
+        // Progress update
+    });
 });
