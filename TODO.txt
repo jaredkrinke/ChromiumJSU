@@ -2,7 +2,7 @@
 Ship shouldn't just jump instantaneously when using touch input (i.e. with non-contiguous mouse move events)
 
 For alpha 2:
-Preload images before the game can start
+Add a loading screen
 
 For alpha 3:
 Sound
