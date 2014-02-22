@@ -382,7 +382,7 @@ Layer.prototype = {
                             context.globalAlpha *= elementOpacity;
                         }
 
-                        if (element instanceof Image && element.loaded && element.width && element.height) {
+                        if (element instanceof Image && element.image && element.image.loaded && element.width && element.height) {
                             if (element.angle) {
                                 context.translate(element.x, -element.y);
                                 context.scale(element.width, element.height);
@@ -391,19 +391,19 @@ Layer.prototype = {
                                 context.rotate(element.angle);
                                 context.translate(-0.5, -0.5);
                                 if (element instanceof ImageRegion) {
-                                    var imgWidth = element.img.width;
-                                    var imgHeight = element.img.height;
-                                    context.drawImage(element.img, element.sx / imgWidth, element.sy / imgHeight, element.swidth / imgWidth, element.sheight / imgHeight, 0, 0, 1, 1);
+                                    var imgWidth = element.image.element.width;
+                                    var imgHeight = element.image.element.height;
+                                    context.drawImage(element.image.element, element.sx / imgWidth, element.sy / imgHeight, element.swidth / imgWidth, element.sheight / imgHeight, 0, 0, 1, 1);
                                 } else {
-                                    context.drawImage(element.img, 0, 0, 1, 1);
+                                    context.drawImage(element.image.element, 0, 0, 1, 1);
                                 }
                             } else {
                                 if (element instanceof ImageRegion) {
-                                    var imgWidth = element.img.width;
-                                    var imgHeight = element.img.height;
-                                    context.drawImage(element.img, element.sx * imgWidth, element.sy * imgHeight, element.swidth * imgWidth, element.sheight * imgHeight, element.x, -element.y, element.width, element.height);
+                                    var imgWidth = element.image.element.width;
+                                    var imgHeight = element.image.element.height;
+                                    context.drawImage(element.image.element, element.sx * imgWidth, element.sy * imgHeight, element.swidth * imgWidth, element.sheight * imgHeight, element.x, -element.y, element.width, element.height);
                                 } else {
-                                    context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                                    context.drawImage(element.image.element, element.x, -element.y, element.width, element.height);
                                 }
                             }
                         } else {
@@ -498,14 +498,8 @@ function Image(source, color, x, y, width, height, opacity) {
     this.opacity = opacity;
     this.loaded = false;
 
-    // Load the image
-    this.img = document.createElement('img');
-    var image = this;
-    this.img.onload = function () {
-        image.loaded = true;
-    };
-
-    this.img.src = source;
+    // Get the image entry from the cache
+    this.image = Radius.images.cache[source];
 }
 
 function ImageRegion(source, color, sx, sy, swidth, sheight, x, y, width, height, opacity) {
@@ -816,6 +810,66 @@ function MouseSerializer(canvas) {
     };
 }
 
+function ImageCache() {
+    this.cache = {};
+}
+
+ImageCache.prototype.load = function (sources) {
+    // Initialize count of images to load
+    var batchCount = sources.length;
+    var completedCount = 0;
+    var handlers = {};
+    for (var i = 0; i < batchCount; i++) {
+        // Create the entry in the cache (including the element)
+        var source = sources[i];
+        var image = document.createElement('img');
+        var entry = {
+            element: image,
+            loaded: false
+        };
+
+        this.cache[source] = entry;
+
+        // Setup image-loading callbacks
+        // TODO: Error handler
+        image.onload = function () {
+            // Make the image as loaded
+            entry.loaded = true;
+
+            // Call handlers, if provided
+            if (++completedCount === batchCount) {
+                // Fulfilled
+                handler = handlers.fulfilled;
+                if (handler) {
+                    handler();
+                }
+            } else {
+                // Progress made
+                handler = handlers.progress;
+                if (handler) {
+                    handler(completedCount / batchCount);
+                }
+            }
+        };
+        
+        // Start loading the image
+        this.cache[source].element.src = source;
+    }
+
+    return {
+        then: function (fulfilledHandler, errorHandler, progressHandler) {
+            // Check to see if we're already done
+            if (completedCount === batchCount) {
+                fulfilledHandler();
+            } else {
+                // Setup handlers since we're not done yet
+                handlers.fulfilled = fulfilledHandler;
+                handlers.progress = progressHandler;
+            }
+        }
+    };
+};
+
 var RadiusSettings = {
     fullscreenOnly: false
 };
@@ -826,6 +880,8 @@ var Radius = new function () {
     var list = [];
     var canvas;
     var context;
+
+    this.images = new ImageCache();
 
     this.pushLayer = function (layer) {
         // Mark the current top layer as being hidden
