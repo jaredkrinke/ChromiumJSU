@@ -1,16 +1,68 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+function Burst(image, x, y, width1, height1, width2, height2, duration, delay) {
+    Entity.call(this, x, y, width1, height1);
+    this.duration = duration;
+    this.width1 = width1;
+    this.height1 = height1;
+    this.width2 = width2;
+    this.height2 = height2;
+    this.timer = delay ? -delay : 0;
+    this.elements = [image];
+
+    // Make sure opacity gets set initially
+    this.update(0);
+}
+
+Burst.prototype = Object.create(Entity.prototype);
+
+Burst.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= 0) {
+        // Update size and opacity
+        var t = Math.min(1, (this.timer + 100) / (this.duration + 100));
+        this.width = this.width1 + (this.width2 - this.width1) * t;
+        this.height = this.height1 + (this.height2 - this.height1) * t;
+        this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
+
+        // Flag for removal if done
+        if (this.timer > this.duration) {
+            this.dead = true;
+        }
+    } else {
+        this.opacity = 0;
+    }
+};
+
+function BurstTemplate(image, width1, height1, width2, height2, duration, delay) {
+    this.image = image;
+    this.width1 = width1;
+    this.height1 = height1;
+    this.width2 = width2;
+    this.height2 = height2;
+    this.duration = duration;
+    this.delay = delay;
+}
+
+BurstTemplate.prototype.instantiate = function (layer, x, y) {
+    layer.addEntity(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay));
+};
+
 function PowerUp(image, shadowImage, use, layer, x, y) {
     Entity.call(this, x, y, 34, 34);
     this.layer = layer;
-    this.use = use;
     this.vy = -0.051;
     this.baseX = x;
     this.baseY = y;
     this.timer = 0;
     this.shadowImage = shadowImage;
     this.elements = [shadowImage, image];
+    this.flashTemplate = new BurstTemplate(shadowImage, this.width, this.height, this.width / 5, this.height / 5, 500);
+    this.use = function () {
+        this.flashTemplate.instantiate(this.layer, this.x, this.y);
+        use.call(this);
+    };
 }
 
 PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
@@ -85,49 +137,11 @@ PowerUps = [
     },
 ];
 
-function Explosion(image, x, y, width, height, duration, delay) {
-    Entity.call(this, x, y, width, height);
-    this.duration = duration;
-    this.originalWidth = width;
-    this.originalHeight = height;
-    this.timer = delay ? -delay : 0;
-    this.elements = [image];
-
-    // Make sure opacity gets set initially
-    this.update(0);
-}
-
-Explosion.prototype = Object.create(Entity.prototype);
-
-Explosion.prototype.update = function (ms) {
-    this.timer += ms;
-    if (this.timer >= 0) {
-        // Update size and opacity
-        var sizeFactor = Math.min(1, (this.timer + 100) / (this.duration + 100));
-        this.width = sizeFactor * this.originalWidth;
-        this.height = sizeFactor * this.originalHeight;
-        this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
-
-        // Flag for removal if done
-        if (this.timer > this.duration) {
-            this.dead = true;
-        }
-    } else {
-        this.opacity = 0;
-    }
-};
-
 function ExplosionTemplate(image, width, height, duration, delay) {
-    this.image = image;
-    this.width = width;
-    this.height = height;
-    this.duration = duration;
-    this.delay = delay;
+    BurstTemplate.call(this, image, 0, 0, width, height, duration, delay);
 }
 
-ExplosionTemplate.prototype.instantiate = function (layer, x, y) {
-    layer.addEntity(new Explosion(this.image, x, y, this.width, this.height, this.duration, this.delay));
-};
+ExplosionTemplate.prototype = Object.create(BurstTemplate.prototype);
 
 function ExplosionSequence(explosions) {
     this.explosions = explosions;
