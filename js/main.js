@@ -411,6 +411,9 @@ PlayerSuperShields.prototype.update = function (ms) {
 
 function Player(layer) {
     Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+
+    this.healthLost = new Event();
+
     this.shieldImage = new PlayerShields();
     this.superShieldImage = new PlayerSuperShields(this);
     this.shields = 0;
@@ -512,6 +515,7 @@ Player.prototype.takeDamage = function (damage) {
 
     if (damage) {
         this.health -= damage;
+        this.healthLost.fire();
     }
 };
 
@@ -1193,6 +1197,35 @@ Electricity.prototype.flash = function () {
     this.update(0);
 };
 
+function Blink(x, y, width, height) {
+    Entity.call(this, x, y, width, height);
+    this.opacity = 0;
+    this.timer = Blink.duration;
+    this.elements = [Blink.image];
+}
+
+Blink.duration = 900;
+Blink.period = 150;
+Blink.opacity = 0.5;
+Blink.image = new Image('images/blink.png', 'red');
+Blink.prototype = Object.create(Entity.prototype);
+
+Blink.prototype.update = function (ms) {
+    if (this.timer >= Blink.duration) {
+        this.opacity = 0;
+    } else {
+        var on = (Math.floor(this.timer / Blink.period) % 2 === 0);
+        this.opacity = on ? Blink.opacity : 0;
+        this.timer += ms;
+    }
+};
+
+Blink.prototype.blink = function () {
+    if (this.timer >= Blink.duration) {
+        this.timer = 0;
+    }
+};
+
 function Display(layer, player) {
     this.layer = layer;
     this.player = player;
@@ -1226,6 +1259,7 @@ function Display(layer, player) {
         display.ammoBackground.opacity = 1;
     });
 
+    // Health/shield pick-up electricity effect
     this.electricityLeft = new Electricity(-320, 0, 65, 160);
     this.electricityRight = new Electricity(320 - 65, 0, 65, 160);
     layer.healthCollected.addListener(function () {
@@ -1235,7 +1269,13 @@ function Display(layer, player) {
         display.electricityLeft.flash();
     });
 
-    this.children = [this.electricityLeft, this.electricityRight];
+    // Damage warning flash
+    this.healthBlink = new Blink(320, -240, 240, 480);
+    player.healthLost.addListener(function () {
+        display.healthBlink.blink();
+    });
+
+    this.children = [this.electricityLeft, this.electricityRight, this.healthBlink];
 }
 
 // TODO: Need a way to share the underlying image

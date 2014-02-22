@@ -3,7 +3,6 @@ Ship shouldn't just jump instantaneously when using touch input (i.e. with non-c
 
 For alpha 2:
 Preload images before the game can start
-Make it more obvious when the player gets hit
 
 For alpha 3:
 Sound
