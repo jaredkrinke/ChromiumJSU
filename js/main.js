@@ -1750,11 +1750,35 @@ GameLayer.prototype.loadLevel1 = function (layer) {
     return level;
 };
 
+function ProgressBar(x, y, width, height, color) {
+    Entity.call(this, x, y, width, height);
+    this.bar = new Rectangle(-0.5, 0.5, 0, 1, color);
+    this.elements = [new Rectangle(-0.5, 0.5, 1, 1, 'darkgray'), this.bar];
+}
+
+ProgressBar.prototype = Object.create(Entity.prototype);
+
+ProgressBar.prototype.setProgress = function (progress) {
+    this.bar.width = progress;
+};
+
+function LoadingLayer(loadPromise, start) {
+    Layer.call(this);
+    // TODO: This layer doesn't need to be constantly redrawn
+    var bar = new ProgressBar(0, 0, 640, 100, 'gray');
+    this.addEntity(bar);
+    loadPromise.then(start, null, function (progress) {
+        bar.setProgress(progress);
+    });
+}
+
+LoadingLayer.prototype = Object.create(Layer.prototype);
+
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
 
     // Pre-load images
-    Radius.images.load([
+    var loadPromise = Radius.images.load([
         'images/ammoBar0.png',
         'images/ammoBar1.png',
         'images/ammoBar2.png',
@@ -1763,6 +1787,7 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/bullet.png',
         'images/bulletExplosion.png',
         'images/bulletFlash.png',
+        'images/electricity.png',
         'images/emp.png',
         'images/empExplosion.png',
         'images/empFlash.png',
@@ -1802,10 +1827,9 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/tankShot.png',
         'images/tankShotExplosion.png',
         'images/tankShotFlash.png',
-    ]).then(function () {
-        // Done loading
-        Radius.start(new GameLayer());
-    }, null, function (progress) {
-        // Progress update
-    });
+    ]);
+
+    Radius.start(new LoadingLayer(loadPromise, function () {
+        Radius.pushLayer(new GameLayer());
+    }));
 });
