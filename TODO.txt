@@ -4,8 +4,6 @@ Ship shouldn't just jump instantaneously when using touch input (i.e. with non-c
 For alpha 3:
 Sound
 Add keyboard controls?
-Knock enemies when hit
-Adjust knock based on shields?
 Super shield sparkles
 Add "don't let enemies through" logic/text?
 
