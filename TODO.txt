@@ -1,22 +1,21 @@
 ﻿Bugs:
-
-For alpha 2:
-Add power-ups/ammunition
-Add UI
-Add "don't let enemies through" logic/text
-Add other special effects (boss damage, etc.)
+Ship shouldn't just jump instantaneously when using touch input (i.e. with non-contiguous mouse move events)
 
 For alpha 3:
 Sound
-Preload images before the game can start
-Add keyboard controls
-Add shields
+Add keyboard controls?
 Knock enemies when hit
-Make it more obvious when the player gets hit
+Adjust knock based on shields?
+Super shield sparkles
+Add "don't let enemies through" logic/text?
 
 For beta 1:
 Add menus
 Complete more levels
+Pause button?
 
 For final:
 Add touch controls
+
+Consider:
+Enemy ammo could "sparkle" by flipping sign on width/height randomly (the original does this)

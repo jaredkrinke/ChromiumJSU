@@ -382,8 +382,30 @@ Layer.prototype = {
                             context.globalAlpha *= elementOpacity;
                         }
 
-                        if (element instanceof Image && element.loaded) {
-                            context.drawImage(element.img, element.x, -element.y, element.width, element.height);
+                        if (element instanceof Image && element.image && element.image.loaded && element.width && element.height) {
+                            if (element.angle) {
+                                context.translate(element.x, -element.y);
+                                context.scale(element.width, element.height);
+                                // Rotate around the center
+                                context.translate(0.5, 0.5);
+                                context.rotate(element.angle);
+                                context.translate(-0.5, -0.5);
+                                if (element instanceof ImageRegion) {
+                                    var imgWidth = element.image.element.width;
+                                    var imgHeight = element.image.element.height;
+                                    context.drawImage(element.image.element, element.sx / imgWidth, element.sy / imgHeight, element.swidth / imgWidth, element.sheight / imgHeight, 0, 0, 1, 1);
+                                } else {
+                                    context.drawImage(element.image.element, 0, 0, 1, 1);
+                                }
+                            } else {
+                                if (element instanceof ImageRegion) {
+                                    var imgWidth = element.image.element.width;
+                                    var imgHeight = element.image.element.height;
+                                    context.drawImage(element.image.element, element.sx * imgWidth, element.sy * imgHeight, element.swidth * imgWidth, element.sheight * imgHeight, element.x, -element.y, element.width, element.height);
+                                } else {
+                                    context.drawImage(element.image.element, element.x, -element.y, element.width, element.height);
+                                }
+                            }
                         } else {
                             // Color is only supported for text/shapes
                             if (element.color) {
@@ -408,9 +430,19 @@ Layer.prototype = {
                                         offset += element.lineHeight;
                                     }
                                 }
-                            } else {
+                            } else if (element.width && element.height) {
                                 // Rectangle
-                                context.fillRect(element.x, -element.y, element.width, element.height);
+                                if (element.angle) {
+                                    context.translate(element.x, -element.y);
+                                    context.scale(element.width, element.height);
+                                    // Rotate around the center
+                                    context.translate(0.5, 0.5);
+                                    context.rotate(element.angle);
+                                    context.translate(-0.5, -0.5);
+                                    context.fillRect(-0.5, -0.5, 1, 1);
+                                } else {
+                                    context.fillRect(element.x, -element.y, element.width, element.height);
+                                }
                             }
                         }
 
@@ -466,15 +498,19 @@ function Image(source, color, x, y, width, height, opacity) {
     this.opacity = opacity;
     this.loaded = false;
 
-    // Load the image
-    this.img = document.createElement('img');
-    var image = this;
-    this.img.onload = function () {
-        image.loaded = true;
-    };
-
-    this.img.src = source;
+    // Get the image entry from the cache
+    this.image = Radius.images.get(source);
 }
+
+function ImageRegion(source, color, sx, sy, swidth, sheight, x, y, width, height, opacity) {
+    Image.call(this, source, color, x, y, width, height, opacity);
+    this.sx = sx;
+    this.sy = sy;
+    this.swidth = swidth;
+    this.sheight = sheight;
+}
+
+ImageRegion.prototype = Object.create(Image.prototype);
 
 // TODO: Should this just take a height value instead of a font?
 function Text(text, font, x, y, align, baseline, lineHeight) {
@@ -774,6 +810,77 @@ function MouseSerializer(canvas) {
     };
 }
 
+function ImageCache() {
+    this.cache = {};
+}
+
+ImageCache.prototype.get = function (source) {
+    // TODO: Retrieve the image on demand?
+    var entry = this.cache[source];
+    if (!entry) {
+        entry = { loaded: false };
+        this.cache[source] = entry;
+    }
+    return entry;
+};
+
+ImageCache.prototype.load = function (sources) {
+    // Initialize count of images to load
+    var batchCount = sources.length;
+    var completedCount = 0;
+    var handlers = {};
+    var imageCache = this;
+    for (var i = 0; i < batchCount; i++) {
+        (function (i) {
+            // Ensure an entry in the cache exists
+            // TODO: Handle multiple requests to load the same image?
+            var source = sources[i];
+            var entry = imageCache.get(source);
+
+            var image = document.createElement('img');
+            entry.element = image;
+
+            // Setup image-loading callbacks
+            // TODO: Error handler
+            image.onload = function () {
+                // Make the image as loaded
+                entry.loaded = true;
+
+                // Call handlers, if provided
+                if (++completedCount === batchCount) {
+                    // Fulfilled
+                    handler = handlers.fulfilled;
+                    if (handler) {
+                        handler();
+                    }
+                } else {
+                    // Progress made
+                    handler = handlers.progress;
+                    if (handler) {
+                        handler(completedCount / batchCount);
+                    }
+                }
+            };
+
+            // Start loading the image
+            image.src = source;
+        })(i);
+    }
+
+    return {
+        then: function (fulfilledHandler, errorHandler, progressHandler) {
+            // Check to see if we're already done
+            if (completedCount === batchCount) {
+                fulfilledHandler();
+            } else {
+                // Setup handlers since we're not done yet
+                handlers.fulfilled = fulfilledHandler;
+                handlers.progress = progressHandler;
+            }
+        }
+    };
+};
+
 var RadiusSettings = {
     fullscreenOnly: false
 };
@@ -784,6 +891,8 @@ var Radius = new function () {
     var list = [];
     var canvas;
     var context;
+
+    this.images = new ImageCache();
 
     this.pushLayer = function (layer) {
         // Mark the current top layer as being hidden
