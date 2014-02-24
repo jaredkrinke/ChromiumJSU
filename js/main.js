@@ -1337,6 +1337,26 @@ Display.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
+function Cursor(layer) {
+    Entity.call(this, 0, 0, Cursor.size, Cursor.size);
+    this.layer = layer;
+    this.opacity = 0.35;
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'white')];
+}
+
+Cursor.size = 5;
+Cursor.offsetY = (240 - Player.boundY) - 10;
+Cursor.prototype = Object.create(Entity.prototype);
+
+Cursor.prototype.setPosition = function (x, y) {
+    this.x = x;
+    this.y = y;
+
+    if (this.layer.player) {
+        this.layer.player.setPosition(x, y + Cursor.offsetY);
+    }
+};
+
 function GameLayer() {
     Layer.call(this);
 
@@ -1347,6 +1367,7 @@ function GameLayer() {
     this.addEntity(new Master(this));
     this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
     this.ground = this.addEntity(new Ground(GroundTemplates.metal));
+    this.playerCursor = this.addEntity(new Cursor(this));
     this.player = this.addEntity(new Player(this));
     this.display = this.addEntity(new Display(this, this.player));
     this.playerShots = [];
@@ -1460,9 +1481,7 @@ GameLayer.prototype.clearPowerUps = function () {
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
-    if (this.player) {
-        this.player.setPosition(x, y);
-    }
+    this.playerCursor.setPosition(x, y);
 };
 
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
