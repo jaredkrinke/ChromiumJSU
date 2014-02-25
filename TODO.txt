@@ -1,4 +1,5 @@
 ﻿Bugs:
+Omnis sometimes appear off screen
 
 For alpha 3:
 Sound
