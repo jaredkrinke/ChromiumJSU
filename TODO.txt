@@ -1,5 +1,6 @@
 ﻿Bugs:
 Ship shouldn't just jump instantaneously when using touch input (i.e. with non-contiguous mouse move events)
+Omnis sometimes appear off screen
 
 For alpha 3:
 Sound
