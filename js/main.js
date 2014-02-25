@@ -419,6 +419,12 @@ function Player(layer) {
     this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
+    // Movement
+    this.cursorX = 0;
+    this.cursorY = 0;
+    this.targetX = this.cursorX;
+    this.targetY = this.cursorY;
+
     // Weapons
     var defaultGun = [
         new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
@@ -481,6 +487,8 @@ Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Play
 Player.exhaustWidth = 37;
 Player.exhaustHeight = 37;
 Player.exhaustImage = new Image('images/empFlash.png', 'blue', -Player.exhaustWidth / 2, Player.exhaustHeight / 2 - 18, Player.exhaustWidth, Player.exhaustHeight, 0.7);
+Player.mouseSpeed = 1280 / 1000;
+Player.movementThreshold = 0.5;
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
@@ -519,9 +527,27 @@ Player.prototype.takeDamage = function (damage) {
     }
 };
 
+Player.prototype.setCursorPosition = function (x, y) {
+    this.cursorX = x;
+    this.cursorY = y;
+};
+
 Player.prototype.update = function (ms) {
     // Update guns
     this.updateChildren(ms);
+
+    // Move based on the cursor
+    var dx = this.cursorX - this.targetX;
+    var dy = this.cursorY - this.targetY;
+    if (dx || dy) {
+        var cursorDistance = Math.sqrt(dx * dx + dy * dy);
+        if (cursorDistance > Player.movementThreshold) {
+            var distance = Math.min(cursorDistance, ms * Player.mouseSpeed);
+            var angle = Math.atan2(dy, dx);
+            this.targetX += distance * Math.cos(angle);
+            this.targetY += distance * Math.sin(angle);
+        }
+    }
 
     // Apply boundaries and temporary offsets
     // TODO: It seems like the bounds would be better controlled in the layer...
@@ -1353,7 +1379,7 @@ Cursor.prototype.setPosition = function (x, y) {
     this.y = y;
 
     if (this.layer.player) {
-        this.layer.player.setPosition(x, y + Cursor.offsetY);
+        this.layer.player.setCursorPosition(x, y + Cursor.offsetY);
     }
 };
 

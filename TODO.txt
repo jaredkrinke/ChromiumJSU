@@ -1,5 +1,4 @@
 ﻿Bugs:
-Ship shouldn't just jump instantaneously when using touch input (i.e. with non-contiguous mouse move events)
 
 For alpha 3:
 Sound
