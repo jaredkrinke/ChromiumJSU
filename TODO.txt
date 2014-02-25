@@ -1,5 +1,7 @@
 ﻿Bugs:
 Omnis sometimes appear off screen
+Enemies appear above UI
+Reduce number of health bar flashes?
 
 For alpha 3:
 Sound
@@ -11,6 +13,8 @@ For beta 1:
 Add menus
 Complete more levels
 Pause button?
+Add lives
+Handle loading errors
 
 For final:
 Add touch controls

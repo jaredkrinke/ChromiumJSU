@@ -219,7 +219,6 @@ StraightShot.explosionImage = new Image('images/straightShotExplosion.png', 'ora
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
-    // TODO: Make it so that the elements get rotated based on direction
     Shot.call(this, x, y, OmniShot.image, 13, 13, vx, vy, 6, new ExplosionTemplate(OmniShot.explosionImage, 28, 28, 10 * 20));
 }
 
@@ -500,7 +499,7 @@ Player.prototype.reset = function () {
     }
 };
 
-// TODO: Keyboard/touch controls
+// TODO: Keyboard
 Player.prototype.setFiring = function (firing) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
@@ -1185,7 +1184,6 @@ function Electricity(x, y, width, height) {
     this.update(0);
 }
 
-// TODO: Make sure this image doesn't get loaded multiple times by the browser...
 Electricity.imageSrc = 'images/electricity.png'
 Electricity.period = 400;
 Electricity.prototype = Object.create(Entity.prototype);
@@ -1510,6 +1508,7 @@ GameLayer.prototype.mouseMoved = function (x, y) {
     this.playerCursor.setPosition(x, y);
 };
 
+// TODO: It would be nice to have shooting work while the mouse is outside the canvas...
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
     if (button === MouseButton.primary && this.player) {
         this.player.setFiring(pressed);
@@ -1600,8 +1599,6 @@ GameLayer.prototype.updateGame = function (ms) {
             // TODO: This is actually a different algorithm than in the original (it used the average of width and
             // height compared to the Manhattan distance...)
             if (this.player && this.checkShotCollision(shot, this.player)) {
-                // TODO: Explosion
-                // TODO: Shields
                 this.player.takeDamage(shot.damage);
                 remove = true;
 
