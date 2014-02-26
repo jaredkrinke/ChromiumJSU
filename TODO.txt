@@ -1,7 +1,7 @@
 ﻿Bugs:
 Omnis sometimes appear off screen
 Enemies appear above UI
-Reduce number of health bar flashes?
+Straight enemies should have randomly differing speeds
 
 For alpha 3:
 Sound

@@ -1228,7 +1228,7 @@ function Blink(x, y, width, height) {
     this.elements = [Blink.image];
 }
 
-Blink.duration = 900;
+Blink.duration = 600;
 Blink.period = 150;
 Blink.opacity = 0.5;
 Blink.image = new Image('images/blink.png', 'red');
