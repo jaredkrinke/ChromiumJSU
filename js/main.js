@@ -686,7 +686,9 @@ Omni.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY -= this.speed * ms;
-    // TODO: Bounds? At least horizontal bounds are needed
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 function RayGun(layer, x, y) {
@@ -742,7 +744,9 @@ RayGun.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY += this.lastMoveY - this.speed * ms;
-    // TODO: Bounds? At least horizontal bounds are needed
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 RayGun.prototype.updateGuns = function (ms) {
@@ -898,7 +902,9 @@ Boss0.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY += this.lastMoveY - this.speed * ms;
-    // TODO: Bounds?
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 var GroundTemplates = {

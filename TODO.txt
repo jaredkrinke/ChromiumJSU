@@ -1,5 +1,4 @@
 ﻿Bugs:
-Omnis sometimes appear off screen
 Enemies appear above UI
 Straight enemies should have randomly differing speeds
 
