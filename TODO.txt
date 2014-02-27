@@ -1,6 +1,5 @@
 ﻿Bugs:
 Enemies appear above UI
-Straight enemies should have randomly differing speeds
 
 For alpha 3:
 Sound

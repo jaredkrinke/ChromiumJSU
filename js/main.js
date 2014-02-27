@@ -604,10 +604,8 @@ Enemy.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
-// TODO: Random factor?
 function Straight(layer, x, y) {
-    //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065, 110, 200,
+    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + Math.random() * 0.0569, 110, 200,
         [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
