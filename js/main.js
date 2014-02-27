@@ -219,7 +219,6 @@ StraightShot.explosionImage = new Image('images/straightShotExplosion.png', 'ora
 StraightShot.prototype = Object.create(Shot.prototype);
 
 function OmniShot(x, y, vx, vy) {
-    // TODO: Make it so that the elements get rotated based on direction
     Shot.call(this, x, y, OmniShot.image, 13, 13, vx, vy, 6, new ExplosionTemplate(OmniShot.explosionImage, 28, 28, 10 * 20));
 }
 
@@ -419,6 +418,12 @@ function Player(layer) {
     this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
+    // Movement
+    this.cursorX = 0;
+    this.cursorY = 0;
+    this.targetX = this.cursorX;
+    this.targetY = this.cursorY;
+
     // Weapons
     var defaultGun = [
         new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
@@ -481,6 +486,8 @@ Player.image = new Image('images/player.png', 'red', -Player.shipWidth / 2, Play
 Player.exhaustWidth = 37;
 Player.exhaustHeight = 37;
 Player.exhaustImage = new Image('images/empFlash.png', 'blue', -Player.exhaustWidth / 2, Player.exhaustHeight / 2 - 18, Player.exhaustWidth, Player.exhaustHeight, 0.7);
+Player.mouseSpeed = 1280 / 1000;
+Player.movementThreshold = 0.5;
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
 Player.boundY = 213;
@@ -492,7 +499,7 @@ Player.prototype.reset = function () {
     }
 };
 
-// TODO: Keyboard/touch controls
+// TODO: Keyboard
 Player.prototype.setFiring = function (firing) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
@@ -519,9 +526,27 @@ Player.prototype.takeDamage = function (damage) {
     }
 };
 
+Player.prototype.setCursorPosition = function (x, y) {
+    this.cursorX = x;
+    this.cursorY = y;
+};
+
 Player.prototype.update = function (ms) {
     // Update guns
     this.updateChildren(ms);
+
+    // Move based on the cursor
+    var dx = this.cursorX - this.targetX;
+    var dy = this.cursorY - this.targetY;
+    if (dx || dy) {
+        var cursorDistance = Math.sqrt(dx * dx + dy * dy);
+        if (cursorDistance > Player.movementThreshold) {
+            var distance = Math.min(cursorDistance, ms * Player.mouseSpeed);
+            var angle = Math.atan2(dy, dx);
+            this.targetX += distance * Math.cos(angle);
+            this.targetY += distance * Math.sin(angle);
+        }
+    }
 
     // Apply boundaries and temporary offsets
     // TODO: It seems like the bounds would be better controlled in the layer...
@@ -579,10 +604,8 @@ Enemy.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
-// TODO: Random factor?
 function Straight(layer, x, y) {
-    //	vel[1] = -0.046-frand*0.04;
-    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065, 110, 200,
+    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + Math.random() * 0.0569, 110, 200,
         [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
@@ -661,7 +684,9 @@ Omni.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY -= this.speed * ms;
-    // TODO: Bounds? At least horizontal bounds are needed
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 function RayGun(layer, x, y) {
@@ -717,7 +742,9 @@ RayGun.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY += this.lastMoveY - this.speed * ms;
-    // TODO: Bounds? At least horizontal bounds are needed
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 RayGun.prototype.updateGuns = function (ms) {
@@ -873,7 +900,9 @@ Boss0.prototype.updateTargetLocation = function (ms) {
     }
 
     this.targetY += this.lastMoveY - this.speed * ms;
-    // TODO: Bounds?
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
 var GroundTemplates = {
@@ -1159,7 +1188,6 @@ function Electricity(x, y, width, height) {
     this.update(0);
 }
 
-// TODO: Make sure this image doesn't get loaded multiple times by the browser...
 Electricity.imageSrc = 'images/electricity.png'
 Electricity.period = 400;
 Electricity.prototype = Object.create(Entity.prototype);
@@ -1204,7 +1232,7 @@ function Blink(x, y, width, height) {
     this.elements = [Blink.image];
 }
 
-Blink.duration = 900;
+Blink.duration = 600;
 Blink.period = 150;
 Blink.opacity = 0.5;
 Blink.image = new Image('images/blink.png', 'red');
@@ -1337,6 +1365,26 @@ Display.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
+function Cursor(layer) {
+    Entity.call(this, 0, 0, Cursor.size, Cursor.size);
+    this.layer = layer;
+    this.opacity = 0.35;
+    this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'white')];
+}
+
+Cursor.size = 5;
+Cursor.offsetY = (240 - Player.boundY) - 10;
+Cursor.prototype = Object.create(Entity.prototype);
+
+Cursor.prototype.setPosition = function (x, y) {
+    this.x = x;
+    this.y = y;
+
+    if (this.layer.player) {
+        this.layer.player.setCursorPosition(x, y + Cursor.offsetY);
+    }
+};
+
 function GameLayer() {
     Layer.call(this);
 
@@ -1347,6 +1395,7 @@ function GameLayer() {
     this.addEntity(new Master(this));
     this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
     this.ground = this.addEntity(new Ground(GroundTemplates.metal));
+    this.playerCursor = this.addEntity(new Cursor(this));
     this.player = this.addEntity(new Player(this));
     this.display = this.addEntity(new Display(this, this.player));
     this.playerShots = [];
@@ -1460,11 +1509,10 @@ GameLayer.prototype.clearPowerUps = function () {
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
-    if (this.player) {
-        this.player.setPosition(x, y);
-    }
+    this.playerCursor.setPosition(x, y);
 };
 
+// TODO: It would be nice to have shooting work while the mouse is outside the canvas...
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
     if (button === MouseButton.primary && this.player) {
         this.player.setFiring(pressed);
@@ -1555,8 +1603,6 @@ GameLayer.prototype.updateGame = function (ms) {
             // TODO: This is actually a different algorithm than in the original (it used the average of width and
             // height compared to the Manhattan distance...)
             if (this.player && this.checkShotCollision(shot, this.player)) {
-                // TODO: Explosion
-                // TODO: Shields
                 this.player.takeDamage(shot.damage);
                 remove = true;
 
