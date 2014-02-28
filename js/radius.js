@@ -453,10 +453,9 @@ Layer.prototype = {
 
             // Draw children
             if (entity.children) {
-                var childCount = entity.children.length;
-                for (var i = 0; i < childCount; i++) {
-                    Layer.prototype.drawEntity(canvas, context, entity.children[i]);
-                }
+                entity.forEachChild(function (child) {
+                    Layer.prototype.drawEntity(canvas, context, child);
+                });
             }
 
             context.restore();
@@ -544,6 +543,14 @@ function Entity(x, y, width, height) {
 Entity.prototype = {
     constructor: Entity,
 
+    addChild: function (child) {
+        if (this.children) {
+            this.children.push(child);
+        } else {
+            this.children = [child];
+        }
+    },
+
     removeChild: function (child) {
         if (this.children) {
             var childCount = this.children.length;
@@ -551,6 +558,15 @@ Entity.prototype = {
                 if (child === this.children[i]) {
                     this.children.splice(i, 1);
                 }
+            }
+        }
+    },
+
+    forEachChild: function (f, that) {
+        if (this.children) {
+            var childCount = this.children.length;
+            for (var i = 0; i < childCount; i++) {
+                f.call(that, this.children[i]);
             }
         }
     },
