@@ -543,78 +543,45 @@ function Entity(x, y, width, height) {
 Entity.prototype = {
     constructor: Entity,
 
-    // TODO: It's a bit messy allowing both straight arrays and LockingLists here... maybe switch to only LockingList?
     addChild: function (child) {
-        if (this.children) {
-            if (this.children instanceof LockingList) {
-                this.children.append(child);
-            } else {
-                this.children.push(child);
-            }
-        } else {
-            this.children = [child];
+        if (!this.children) {
+            this.children = new LockingList();
+        }
+
+        this.children.append(child);
+    },
+
+    addChildren: function (children) {
+        var count = children.length;
+        for (var i = 0; i < count; i++) {
+            this.addChild(children[i]);
         }
     },
 
     removeChild: function (child) {
         if (this.children) {
-            if (this.children instanceof LockingList) {
-                this.children.remove(child);
-            } else {
-                var childCount = this.children.length;
-                for (var i = 0; i < childCount; i++) {
-                    if (child === this.children[i]) {
-                        this.children.splice(i, 1);
-                    }
-                }
-            }
+            this.children.remove(child);
         }
     },
 
     forEachChild: function (f, that) {
         if (this.children) {
-            if (this.children instanceof LockingList) {
-                this.children.forEach(f, that);
-            } else {
-                var childCount = this.children.length;
-                for (var i = 0; i < childCount; i++) {
-                    f.call(that, this.children[i]);
-                }
-            }
+            this.children.forEach(f, that);
         }
     },
 
     updateChildren: function (ms) {
         if (this.children) {
-            if (this.children instanceof LockingList) {
-                this.children.forEach(function (child) {
-                    if (child.update) {
-                        child.update(ms);
-                    }
-
-                    // Check to see if this child should be removed
-                    if (child.dead) {
-                        this.children.remove(child);
-                    }
-                }, this);
-            } else {
-                var childCount = this.children.length;
-                for (var i = 0; i < childCount; i++) {
-                    var child = this.children[i];
-                    if (child.update) {
-                        child.update(ms);
-                    }
-
-                    // Check to see if this child should be removed
-                    if (child.dead) {
-                        this.removeChild(child);
-
-                        // Update loop variables to account for the removed child
-                        childCount--;
-                        i--;
-                    }
+            this.children.forEach(function (child) {
+                if (child.update) {
+                    child.update(ms);
                 }
-            }
+
+                // Check to see if this child should be removed
+                if (child.dead) {
+                    this.children.remove(child);
+                }
+            }, this);
         }
     },
 

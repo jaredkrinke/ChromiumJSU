@@ -45,8 +45,9 @@ function BurstTemplate(image, width1, height1, width2, height2, duration, delay)
     this.delay = delay;
 }
 
+// TODO: Base everything on a parent instead of the layer?
 BurstTemplate.prototype.instantiate = function (layer, x, y) {
-    layer.addEntity(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay));
+    layer.master.effects.addChild(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay));
 };
 
 function PowerUp(image, shadowImage, use, layer, x, y) {
@@ -473,9 +474,9 @@ function Player(layer) {
     limitAmmo(emp, 2, 1.5);
 
     // Set up children
-    this.children = this.guns.slice();
-    this.children.push(this.shieldImage);
-    this.children.push(this.superShieldImage);
+    this.addChildren(this.guns);
+    this.addChild(this.shieldImage);
+    this.addChild(this.superShieldImage);
 }
 
 Player.maxHealth = 500;
@@ -565,7 +566,7 @@ function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, mass, guns, ex
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
     this.target = layer.player;
-    this.children = guns.slice();
+    this.addChildren(guns);
     this.guns = guns;
 }
 
@@ -664,7 +665,7 @@ function Omni(layer, x, y) {
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
-    this.children.push(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
+    this.addChild(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
 }
 
 Omni.shipWidth = 40;
@@ -939,7 +940,6 @@ GroundSegment.prototype.update = function (ms) {
 
 function Ground(template) {
     Entity.call(this);
-    this.children = [];
 
     var scaleY = 1;
     var screenHeight = 480;
@@ -953,7 +953,7 @@ function Ground(template) {
         var scaleX = 1;
         var x = -screenWidth / 2 + template.segmentWidth / 2;
         for (var j = 0; j < columns; j++) {
-            this.children.push(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
+            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
             scaleX = -scaleX;
             x += template.segmentWidth;
         }
@@ -1166,8 +1166,8 @@ Level.prototype.update = function (ms) {
 };
 
 function Master(layer) {
+    Entity.call(this);
     this.layer = layer;
-    this.children = new LockingList();
 
     // Background
     this.addChild(new Ground(GroundTemplates.metalHighlight));
@@ -1176,14 +1176,180 @@ function Master(layer) {
     // Player (and cursor)
     this.addChild(layer.playerCursor);
     this.addChild(layer.player);
+    this.addChild(this.playerShots = new Entity());
+
+    // Enemies
+    this.addChild(this.enemies = new Entity());
+    this.addChild(this.enemyShots = new Entity());
+
+    // Power-ups
+    this.addChild(this.powerups = new Entity());
+
+    // Special effects
+    this.addChild(this.effects = new Entity());
 }
 
-// TODO: Should the layer just have its own "update" function?
 Master.prototype = Object.create(Entity.prototype);
 
 Master.prototype.update = function (ms) {
-    this.layer.updateGame(ms);
+    this.updateGame(ms);
     this.updateChildren(ms);
+};
+
+Master.prototype.updateGame = function (ms) {
+    // Check bounds and collisions for player shots
+    this.playerShots.forEachChild(function (shot) {
+        var remove = false;
+
+        if (shot.y > GameLayer.boundY) {
+            // Out of bounds
+            remove = true;
+        } else {
+            // Check collisions
+            this.enemies.forEachChild(function (enemy) {
+                if (this.layer.checkShotCollision(shot, enemy)) {
+                    if (shot.permanent) {
+                        // Scale damage based on time for permanent shots
+                        enemy.health -= shot.damage * ms / 20;
+                    } else {
+                        enemy.health -= shot.damage;
+                        remove = true;
+                    }
+
+                    // Add explosion
+                    // TODO: Permanent shots (plasma) should add explosions on a timer...
+                    shot.explosionTemplate.instantiate(this.layer, shot.x, shot.y);
+                }
+            }, this);
+        }
+
+        if (remove) {
+            this.layer.removePlayerShot(shot);
+        }
+    }, this);
+
+    // Check bounds and collisions for enemy shots
+    this.enemyShots.forEachChild(function (shot) {
+        var remove = false;
+
+        if (shot.y < -GameLayer.boundY
+            || shot.y > GameLayer.boundY
+            || shot.x < -GameLayer.boundX
+            || shot.x > GameLayer.boundX) {
+            remove = true;
+        } else {
+            // Check collisions
+            // TODO: This is actually a different algorithm than in the original (it used the average of width and
+            // height compared to the Manhattan distance...)
+            if (this.layer.player && this.layer.checkShotCollision(shot, this.layer.player)) {
+                this.layer.player.takeDamage(shot.damage);
+                remove = true;
+
+                // Knock back
+                // TODO: Should this also knock horizontally?
+                this.layer.player.offsetY += shot.damage / 0.87 * shot.vy;
+
+                // Add explosion
+                shot.explosionTemplate.instantiate(this.layer, shot.x, shot.y);
+            }
+        }
+
+        if (remove) {
+            this.layer.removeEnemyShot(shot);
+        }
+    }, this);
+
+    // Check bounds, health, collisions for enemies
+    this.enemies.forEachChild(function (enemy) {
+        var remove = false;
+        if (enemy.y < -GameLayer.boundY) {
+            // Out of bounds
+            // TODO: This should cause the player to lose a life
+            remove = true;
+        } else if (enemy.health <= 0) {
+            // Destroyed
+            remove = true;
+
+            // Add explosion
+            var template = enemy.explosionTemplate;
+            if (template) {
+                template.instantiate(this.layer, enemy.x, enemy.y);
+            }
+        } else if (this.layer.player && this.layer.player.health > 0 && this.layer.checkShipCollision(this.layer.player, enemy)) {
+            // TODO: Move to helper on Player?
+            var damage = Math.min(35, enemy.health / 2);
+            this.layer.player.takeDamage(damage);
+            enemy.health -= 40;
+
+            // Knock player
+            var deltaX = (this.layer.player.x - enemy.x);
+            var deltaY = (this.layer.player.y - enemy.y);
+            this.layer.player.offsetX += deltaX * damage * 0.04;
+            this.layer.player.offsetY += deltaY * damage * 0.04;
+
+            // Knock enemy
+            var massFactor = this.layer.player.mass / enemy.mass;
+            enemy.offsetX -= deltaX * massFactor;
+            enemy.offsetY -= deltaY * massFactor / 2;
+
+            // Add explosions
+            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
+            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
+
+            GameLayer.collisionExplosionTemplate.instantiate(this.layer, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
+
+            if (this.layer.player.shields <= 0) {
+                GameLayer.collisionExplosionTemplate.instantiate(this.layer, this.layer.player.x + explosionOffsetX, this.layer.player.y + explosionOffsetY + 6);
+            }
+        }
+
+        if (remove) {
+            this.layer.removeEnemy(enemy);
+        }
+    }, this);
+
+    // Check bounds and collisions for power-ups
+    this.powerups.forEachChild(function (powerup) {
+        var remove = false;
+
+        if (powerup.y < -GameLayer.boundY
+            || powerup.y > GameLayer.boundY
+            || powerup.x < -GameLayer.boundX
+            || powerup.x > GameLayer.boundX) {
+            remove = true;
+        } else {
+            // Check collisions
+            if (this.layer.player && this.layer.checkPowerUpCollision(this.layer.player, powerup)) {
+                // Apply the power-up
+                powerup.use();
+                remove = true;
+            }
+        }
+
+        if (remove) {
+            this.layer.removePowerUp(powerup);
+        }
+    }, this);
+
+    // Check for loss
+    if (this.layer.player && this.layer.player.health <= 0) {
+        // Add explosion
+        var template = this.layer.player.explosionTemplate;
+        if (template) {
+            template.instantiate(this.layer, this.layer.player.x, this.layer.player.y);
+        }
+
+        this.removeChild(this.layer.player);
+        this.layer.player = null;
+
+        // Re-enable the cursor
+        this.layer.cursor = 'auto';
+    }
+
+    // Add new enemies according to the level
+    if (this.layer.level) {
+        this.layer.level.update(ms);
+    }
 };
 
 function Electricity(x, y, width, height) {
@@ -1313,7 +1479,9 @@ function Display(layer, player) {
         display.healthBlink.blink();
     });
 
-    this.children = [this.electricityLeft, this.electricityRight, this.healthBlink];
+    this.addChild(this.electricityLeft);
+    this.addChild(this.electricityRight);
+    this.addChild(this.healthBlink);
 }
 
 // TODO: Need a way to share the underlying image
@@ -1398,18 +1566,20 @@ Cursor.prototype.setPosition = function (x, y) {
 function GameLayer() {
     Layer.call(this);
 
+    // TODO: Most of this should be moved to Master
     this.ammoCollected = new Event();
     this.healthCollected = new Event();
     this.shieldsCollected = new Event();
 
     this.playerCursor = new Cursor(this);
     this.player = new Player(this);
-    this.addEntity(new Master(this));
-    this.display = this.addEntity(new Display(this, this.player));
-    this.playerShots = [];
-    this.enemies = [];
-    this.enemyShots = [];
-    this.powerups = [];
+    this.master = new Master(this);
+    this.display = new Display(this, this.player);
+
+    this.addEntity(this.master);
+    this.addEntity(this.display);
+
+    // TODO: Needed?
     this.reset();
 }
 
@@ -1419,11 +1589,12 @@ GameLayer.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImag
 GameLayer.prototype = Object.create(Layer.prototype);
 
 GameLayer.prototype.reset = function () {
+    // TODO: Actually reset somewhere
     this.player.reset();
-    this.clearPlayerShots();
-    this.clearEnemies();
-    this.clearEnemyShots();
-    this.clearPowerUps();
+    //this.clearPlayerShots();
+    //this.clearEnemies();
+    //this.clearEnemyShots();
+    //this.clearPowerUps();
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.cursor = 'none';
@@ -1443,76 +1614,37 @@ GameLayer.prototype.reset = function () {
     //}]);
 };
 
+// TODO: These probably won't be necessary eventually
 GameLayer.prototype.addPlayerShot = function (shot) {
-    this.playerShots.push(this.addEntity(shot));
+    this.master.playerShots.addChild(shot);
 };
 
 GameLayer.prototype.removePlayerShot = function (shot) {
-    var index = this.playerShots.indexOf(shot);
-    if (index >= 0) {
-        this.removeEntity(this.playerShots[index]);
-        this.playerShots.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearPlayerShots = function () {
-    while (this.playerShots.length > 0) {
-        this.removePlayerShot(this.playerShots[0]);
-    }
+    this.master.playerShots.removeChild(shot);
 };
 
 GameLayer.prototype.addEnemy = function (enemy) {
-    this.enemies.push(this.addEntity(enemy));
+    this.master.enemies.addChild(enemy);
 };
 
 GameLayer.prototype.removeEnemy = function (enemy) {
-    var index = this.enemies.indexOf(enemy);
-    if (index >= 0) {
-        this.removeEntity(this.enemies[index]);
-        this.enemies.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearEnemies = function () {
-    while (this.enemies.length > 0) {
-        this.removeEnemy(this.enemies[0]);
-    }
+    this.master.enemies.removeChild(enemy);
 };
 
 GameLayer.prototype.addEnemyShot = function (shot) {
-    this.enemyShots.push(this.addEntity(shot));
+    this.master.enemyShots.addChild(shot);
 };
 
 GameLayer.prototype.removeEnemyShot = function (shot) {
-    var index = this.enemyShots.indexOf(shot);
-    if (index >= 0) {
-        this.removeEntity(this.enemyShots[index]);
-        this.enemyShots.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearEnemyShots = function () {
-    while (this.enemyShots.length > 0) {
-        this.removeEnemyShot(this.enemyShots[0]);
-    }
+    this.master.enemyShots.removeChild(shot);
 };
 
 GameLayer.prototype.addPowerUp = function (powerup) {
-    this.powerups.push(this.addEntity(powerup));
+    this.master.powerups.addChild(powerup);
 };
 
 GameLayer.prototype.removePowerUp = function (powerup) {
-    var index = this.powerups.indexOf(powerup);
-    if (index >= 0) {
-        this.removeEntity(this.powerups[index]);
-        this.powerups.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearPowerUps = function () {
-    while (this.powerups.length > 0) {
-        this.removePowerUp(this.powerups[0]);
-    }
+    this.master.powerups.removeChild(powerup);
 };
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
@@ -1555,180 +1687,6 @@ GameLayer.prototype.checkPowerUpCollision = function (ship, powerup) {
     // Again, kind of odd logic here
     var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
     return distance < ship.shipHeight / 2;
-};
-
-GameLayer.prototype.updateGame = function (ms) {
-    // Check bounds and collisions for player shots
-    var count = this.playerShots.length;
-    for (var i = 0; i < count; i++) {
-        var shot = this.playerShots[i];
-        var remove = false;
-
-        if (shot.y > GameLayer.boundY) {
-            // Out of bounds
-            remove = true;
-        } else {
-            // Check collisions
-            var enemyCount = this.enemies.length;
-            for (var j = 0; j < enemyCount; j++) {
-                var enemy = this.enemies[j];
-                if (this.checkShotCollision(shot, enemy)) {
-                    if (shot.permanent) {
-                        // Scale damage based on time for permanent shots
-                        enemy.health -= shot.damage * ms / 20;
-                    } else {
-                        enemy.health -= shot.damage;
-                        remove = true;
-                    }
-
-                    // Add explosion
-                    // TODO: Permanent shots (plasma) should add explosions on a timer...
-                    shot.explosionTemplate.instantiate(this, shot.x, shot.y);
-                }
-            }
-        }
-
-        if (remove) {
-            this.removePlayerShot(shot);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds and collisions for enemy shots
-    count = this.enemyShots.length;
-    for (i = 0; i < count; i++) {
-        var shot = this.enemyShots[i];
-        var remove = false;
-
-        if (shot.y < -GameLayer.boundY
-            || shot.y > GameLayer.boundY
-            || shot.x < -GameLayer.boundX
-            || shot.x > GameLayer.boundX) {
-            remove = true;
-        } else {
-            // Check collisions
-            // TODO: This is actually a different algorithm than in the original (it used the average of width and
-            // height compared to the Manhattan distance...)
-            if (this.player && this.checkShotCollision(shot, this.player)) {
-                this.player.takeDamage(shot.damage);
-                remove = true;
-
-                // Knock back
-                // TODO: Should this also knock horizontally?
-                this.player.offsetY += shot.damage / 0.87 * shot.vy;
-
-                // Add explosion
-                shot.explosionTemplate.instantiate(this, shot.x, shot.y);
-            }
-        }
-
-        if (remove) {
-            this.removeEnemyShot(shot);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds, health, collisions for enemies
-    count = this.enemies.length;
-    for (i = 0; i < count; i++) {
-        var enemy = this.enemies[i];
-        var remove = false;
-        if (enemy.y < -GameLayer.boundY) {
-            // Out of bounds
-            // TODO: This should cause the player to lose a life
-            remove = true;
-        } else if (enemy.health <= 0) {
-            // Destroyed
-            remove = true;
-
-            // Add explosion
-            var template = enemy.explosionTemplate;
-            if (template) {
-                template.instantiate(this, enemy.x, enemy.y);
-            }
-        } else if (this.player && this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
-            // TODO: Move to helper on Player?
-            var damage = Math.min(35, enemy.health / 2);
-            this.player.takeDamage(damage);
-            enemy.health -= 40;
-
-            // Knock player
-            var deltaX = (this.player.x - enemy.x);
-            var deltaY = (this.player.y - enemy.y);
-            this.player.offsetX += deltaX * damage * 0.04;
-            this.player.offsetY += deltaY * damage * 0.04;
-
-            // Knock enemy
-            var massFactor = this.player.mass / enemy.mass;
-            enemy.offsetX -= deltaX * massFactor;
-            enemy.offsetY -= deltaY * massFactor / 2;
-
-            // Add explosions
-            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
-            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
-
-            GameLayer.collisionExplosionTemplate.instantiate(this, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
-
-            if (this.player.shields <= 0) {
-                GameLayer.collisionExplosionTemplate.instantiate(this, this.player.x + explosionOffsetX, this.player.y + explosionOffsetY + 6);
-            }
-        }
-
-        if (remove) {
-            this.removeEnemy(enemy);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds and collisions for power-ups
-    count = this.powerups.length;
-    for (i = 0; i < count; i++) {
-        var powerup = this.powerups[i];
-        var remove = false;
-
-        if (powerup.y < -GameLayer.boundY
-            || powerup.y > GameLayer.boundY
-            || powerup.x < -GameLayer.boundX
-            || powerup.x > GameLayer.boundX) {
-            remove = true;
-        } else {
-            // Check collisions
-            if (this.player && this.checkPowerUpCollision(this.player, powerup)) {
-                // Apply the power-up
-                powerup.use();
-                remove = true;
-            }
-        }
-
-        if (remove) {
-            this.removePowerUp(powerup);
-            i--;
-            count--;
-        }
-    }
-
-    // Check for loss
-    if (this.player && this.player.health <= 0) {
-        // Add explosion
-        var template = this.player.explosionTemplate;
-        if (template) {
-            template.instantiate(this, this.player.x, this.player.y);
-        }
-
-        this.removeEntity(this.player);
-        this.player = null;
-
-        // Re-enable the cursor
-        this.cursor = 'auto';
-    }
-
-    // Add new enemies according to the level
-    if (this.level) {
-        this.level.update(ms);
-    }
 };
 
 // TODO: Where should this code go?
