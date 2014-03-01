@@ -1,5 +1,4 @@
 ﻿Bugs:
-Enemies appear above UI
 
 For alpha 3:
 Sound
