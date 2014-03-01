@@ -543,9 +543,14 @@ function Entity(x, y, width, height) {
 Entity.prototype = {
     constructor: Entity,
 
+    // TODO: It's a bit messy allowing both straight arrays and LockingLists here... maybe switch to only LockingList?
     addChild: function (child) {
         if (this.children) {
-            this.children.push(child);
+            if (this.children instanceof LockingList) {
+                this.children.append(child);
+            } else {
+                this.children.push(child);
+            }
         } else {
             this.children = [child];
         }
@@ -553,10 +558,14 @@ Entity.prototype = {
 
     removeChild: function (child) {
         if (this.children) {
-            var childCount = this.children.length;
-            for (var i = 0; i < childCount; i++) {
-                if (child === this.children[i]) {
-                    this.children.splice(i, 1);
+            if (this.children instanceof LockingList) {
+                this.children.remove(child);
+            } else {
+                var childCount = this.children.length;
+                for (var i = 0; i < childCount; i++) {
+                    if (child === this.children[i]) {
+                        this.children.splice(i, 1);
+                    }
                 }
             }
         }
@@ -564,29 +573,46 @@ Entity.prototype = {
 
     forEachChild: function (f, that) {
         if (this.children) {
-            var childCount = this.children.length;
-            for (var i = 0; i < childCount; i++) {
-                f.call(that, this.children[i]);
+            if (this.children instanceof LockingList) {
+                this.children.forEach(f, that);
+            } else {
+                var childCount = this.children.length;
+                for (var i = 0; i < childCount; i++) {
+                    f.call(that, this.children[i]);
+                }
             }
         }
     },
 
     updateChildren: function (ms) {
         if (this.children) {
-            var childCount = this.children.length;
-            for (var i = 0; i < childCount; i++) {
-                var child = this.children[i];
-                if (child.update) {
-                    child.update(ms);
-                }
+            if (this.children instanceof LockingList) {
+                this.children.forEach(function (child) {
+                    if (child.update) {
+                        child.update(ms);
+                    }
 
-                // Check to see if this child should be removed
-                if (child.dead) {
-                    this.removeChild(child);
+                    // Check to see if this child should be removed
+                    if (child.dead) {
+                        this.children.remove(child);
+                    }
+                }, this);
+            } else {
+                var childCount = this.children.length;
+                for (var i = 0; i < childCount; i++) {
+                    var child = this.children[i];
+                    if (child.update) {
+                        child.update(ms);
+                    }
 
-                    // Update loop variables to account for the removed child
-                    childCount--;
-                    i--;
+                    // Check to see if this child should be removed
+                    if (child.dead) {
+                        this.removeChild(child);
+
+                        // Update loop variables to account for the removed child
+                        childCount--;
+                        i--;
+                    }
                 }
             }
         }

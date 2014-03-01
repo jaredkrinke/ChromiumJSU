@@ -1167,6 +1167,15 @@ Level.prototype.update = function (ms) {
 
 function Master(layer) {
     this.layer = layer;
+    this.children = new LockingList();
+
+    // Background
+    this.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.addChild(new Ground(GroundTemplates.metal));
+
+    // Player (and cursor)
+    this.addChild(layer.playerCursor);
+    this.addChild(layer.player);
 }
 
 // TODO: Should the layer just have its own "update" function?
@@ -1174,6 +1183,7 @@ Master.prototype = Object.create(Entity.prototype);
 
 Master.prototype.update = function (ms) {
     this.layer.updateGame(ms);
+    this.updateChildren(ms);
 };
 
 function Electricity(x, y, width, height) {
@@ -1392,11 +1402,9 @@ function GameLayer() {
     this.healthCollected = new Event();
     this.shieldsCollected = new Event();
 
+    this.playerCursor = new Cursor(this);
+    this.player = new Player(this);
     this.addEntity(new Master(this));
-    this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
-    this.ground = this.addEntity(new Ground(GroundTemplates.metal));
-    this.playerCursor = this.addEntity(new Cursor(this));
-    this.player = this.addEntity(new Player(this));
     this.display = this.addEntity(new Display(this, this.player));
     this.playerShots = [];
     this.enemies = [];
