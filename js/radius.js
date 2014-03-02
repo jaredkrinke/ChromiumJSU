@@ -285,6 +285,7 @@ var keyCodeToName = {
     38: 'up',
     39: 'right',
     40: 'down',
+    90: 'z'
 };
 
 // Layer that contains entities to display/update

@@ -423,6 +423,10 @@ function Player(master) {
     this.cursorY = 0;
     this.targetX = this.cursorX;
     this.targetY = this.cursorY;
+    this.movingLeft = false;
+    this.movingRight = false;
+    this.movingUp = false;
+    this.movingDown = false;
 
     // Weapons
     var defaultGun = [
@@ -487,6 +491,7 @@ Player.exhaustWidth = 37;
 Player.exhaustHeight = 37;
 Player.exhaustImage = new Image('images/empFlash.png', 'blue', -Player.exhaustWidth / 2, Player.exhaustHeight / 2 - 18, Player.exhaustWidth, Player.exhaustHeight, 0.7);
 Player.mouseSpeed = 1280 / 1000;
+Player.keyboardSpeed = Player.mouseSpeed / 3;
 Player.movementThreshold = 0.5;
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
@@ -499,12 +504,27 @@ Player.prototype.reset = function () {
     }
 };
 
-// TODO: Keyboard
 Player.prototype.setFiring = function (firing) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
         this.guns[i].setFiring(firing);
     }
+};
+
+Player.prototype.setMovingLeft = function (pressed) {
+    this.movingLeft = pressed;
+};
+
+Player.prototype.setMovingRight = function (pressed) {
+    this.movingRight = pressed;
+};
+
+Player.prototype.setMovingUp = function (pressed) {
+    this.movingUp = pressed;
+};
+
+Player.prototype.setMovingDown = function (pressed) {
+    this.movingDown = pressed;
 };
 
 Player.prototype.takeDamage = function (damage) {
@@ -534,6 +554,30 @@ Player.prototype.setCursorPosition = function (x, y) {
 Player.prototype.update = function (ms) {
     // Update guns
     this.updateChildren(ms);
+
+    // Move based on keyboard input
+    var moveX = 0;
+    var moveY = 0;
+    moveX += (this.movingLeft ? -1 : 0);
+    moveX += (this.movingRight ? 1 : 0);
+    moveY += (this.movingUp ? 1 : 0);
+    moveY += (this.movingDown ? -1 : 0);
+    if (moveX || moveY) {
+        var distance = ms * Player.keyboardSpeed;
+        var angle = Math.atan2(moveY, moveX);
+        this.targetX += distance * Math.cos(angle);
+        this.targetY += distance * Math.sin(angle);
+
+        // Boundaries
+        this.targetX = Math.max(-Player.boundX, Math.min(Player.boundX, this.targetX));
+        this.targetY = Math.max(-Player.boundY, Math.min(Player.boundY, this.targetY));
+
+        // Set the cursor position to here so that any previous mouse input will be ignored
+        this.setCursorPosition(this.targetX, this.targetY);
+
+        // Hide the mouse cursor since we're using keyboard input for now (the next mouse input will switch it back)
+        this.master.playerCursor.setVisible(false);
+    }
 
     // Move based on the cursor
     var dx = this.cursorX - this.targetX;
@@ -1702,21 +1746,27 @@ Display.prototype.update = function (ms) {
 function Cursor(master) {
     Entity.call(this, 0, 0, Cursor.size, Cursor.size);
     this.master = master;
-    this.opacity = 0.35;
+    this.opacity = 0;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'white')];
 }
 
 Cursor.size = 5;
 Cursor.offsetY = (240 - Player.boundY) - 10;
+Cursor.opacity = 0.35;
 Cursor.prototype = Object.create(Entity.prototype);
 
 Cursor.prototype.setPosition = function (x, y) {
+    this.setVisible(true);
     this.x = x;
     this.y = y;
 
     if (this.master.player) {
         this.master.player.setCursorPosition(x, y + Cursor.offsetY);
     }
+};
+
+Cursor.prototype.setVisible = function (visible) {
+    this.opacity = (visible ? Cursor.opacity : 0);
 };
 
 function GameLayer() {
@@ -1730,6 +1780,16 @@ function GameLayer() {
 
     // TODO: This should also reset the display (and anything in the layer, if necessary)
     this.master.reset();
+
+    // Keyboard controls
+    this.keyPressedHandlers = {
+        up: GameLayer.prototype.moveUp,
+        down: GameLayer.prototype.moveDown,
+        left: GameLayer.prototype.moveLeft,
+        right: GameLayer.prototype.moveRight,
+        space: GameLayer.prototype.fire,
+        z: GameLayer.prototype.fire
+    };
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
@@ -1750,6 +1810,36 @@ GameLayer.prototype.mouseOut = function () {
     // Stop firing if the mouse left the canvas
     if (this.master.player) {
         this.master.player.setFiring(false);
+    }
+};
+
+GameLayer.prototype.moveLeft = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingLeft(pressed);
+    }
+};
+
+GameLayer.prototype.moveRight = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingRight(pressed);
+    }
+};
+
+GameLayer.prototype.moveUp = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingUp(pressed);
+    }
+};
+
+GameLayer.prototype.moveDown = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingDown(pressed);
+    }
+};
+
+GameLayer.prototype.fire = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setFiring(pressed);
     }
 };
 
