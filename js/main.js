@@ -185,6 +185,7 @@ Shot.prototype.update = function (ms) {
 };
 
 function Bullet(x, y) {
+    // TODO: Couldn't the explosion templates be shared across all instances?
     Shot.call(this, x, y, Bullet.image, 3, 18, 0, 0.71, 3.5, new ExplosionTemplate(Bullet.explosionImage, 14, 14, 10 * 20));
 }
 
@@ -354,7 +355,44 @@ AudioManager = {};
     };
 })();
 
-function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionSoundEffects) {
+function AudioEffect(fileName, delay) {
+    Entity.call(this);
+    this.timer = 0;
+    this.fileName = fileName;
+    this.delay = delay;
+}
+
+AudioEffect.prototype = Object.create(Entity.prototype);
+
+AudioEffect.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= this.delay) {
+        AudioManager.play(this.fileName);
+        this.dead = true;
+    }
+};
+
+function AudioTemplate(effects) {
+    this.effects = effects;
+}
+
+AudioTemplate.prototype.instantiate = function (parent) {
+    var count = this.effects.length;
+    for (var i = 0; i < count; i++) {
+        var effect = this.effects[i];
+        var fileName = effect[0];
+        var delay = effect[1];
+        if (delay) {
+            // Schedule the clip to play later
+            parent.addChild(new AudioEffect(fileName, delay));
+        } else {
+            // No delay, so play the clip now
+            AudioManager.play(fileName);
+        }
+    }
+};
+
+function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionAudioTemplate) {
     Entity.call(this, x, y);
     this.shipWidth = shipWidth;
     this.shipHeight = shipHeight;
@@ -362,7 +400,7 @@ function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTempla
     this.master = master;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
-    this.explosionSoundEffects = explosionSoundEffects;
+    this.explosionAudioTemplate = explosionAudioTemplate;
     // TODO: This whole system of target vs. actual vs. offset is messy and confusing
     this.targetX = x;
     this.targetY = y;
@@ -389,12 +427,9 @@ Ship.prototype.updateOffsets = function (ms) {
     this.offsetY *= factor;
 };
 
-Ship.prototype.playExplosionSoundEffects = function () {
-    if (this.explosionSoundEffects) {
-        var count = this.explosionSoundEffects.length;
-        for (var i = 0; i < count; i++) {
-            AudioManager.play(this.explosionSoundEffects[i]);
-        }
+Ship.prototype.playExplosionSoundEffects = function (parent) {
+    if (this.explosionAudioTemplate) {
+        this.explosionAudioTemplate.instantiate(parent);
     }
 };
 
@@ -441,7 +476,7 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20), ['explosionBig.mp3']);
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20), new AudioTemplate([['explosionBig.mp3']]));
 
     this.healthLost = new Event();
 
@@ -635,8 +670,8 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(master, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate, explosionSoundEffects) {
-    Ship.call(this, master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionSoundEffects);
+function Enemy(master, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate, explosionAudioTemplate) {
+    Ship.call(this, master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionAudioTemplate);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
@@ -689,7 +724,7 @@ function Straight(master, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
         ]),
-        ['explosion.mp3']);
+        new AudioTemplate([['explosion.mp3']]));
     this.elements = [Straight.image];
 }
 
@@ -738,7 +773,7 @@ function Omni(master, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
             [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
     ]),
-    ['explosionBig.mp3']);
+    new AudioTemplate([['explosionBig.mp3']]));
 
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
@@ -780,10 +815,10 @@ function RayGun(master, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 30 * 20)]
         ]),
-        [
-        'explosion.mp3',
-        'explosionBig.mp3'
-        ]);
+        new AudioTemplate([
+        ['explosion.mp3'],
+        ['explosionBig.mp3']
+        ]));
     this.elements = [RayGun.image];
     this.timer = 0;
     this.movementFactor = 0.5 + Math.random() / 2;
@@ -881,7 +916,7 @@ function Boss0(master, x, y) {
     }
 
     // TODO: Boss explosion sound effects
-    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), ['explosion.mp3', 'explosionBig.mp3']);
+    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([['explosion.mp3'], ['explosionBig.mp3']]));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -1511,7 +1546,7 @@ Master.prototype.updateGame = function (ms) {
             remove = true;
 
             // Sound effects
-            enemy.playExplosionSoundEffects();
+            enemy.playExplosionSoundEffects(this.effects);
 
             // Add explosion
             var template = enemy.explosionTemplate;
@@ -1578,7 +1613,7 @@ Master.prototype.updateGame = function (ms) {
     if (this.player && this.player.health <= 0) {
         // TODO: Shouldn't this be consolidated into a method on Ship so enemies don't duplicate the code?
         // Sound effect
-        this.player.playExplosionSoundEffects();
+        this.player.playExplosionSoundEffects(this.effects);
 
         // Add explosion
         var template = this.player.explosionTemplate;
