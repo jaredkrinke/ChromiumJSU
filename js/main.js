@@ -61,6 +61,7 @@ function PowerUp(image, shadowImage, use, master, x, y) {
     this.flashTemplate = new BurstTemplate(shadowImage, this.width, this.height, this.width / 5, this.height / 5, 500);
     this.use = function () {
         this.flashTemplate.instantiate(this.master.effects, this.x, this.y);
+        AudioManager.play('powerup.mp3');
         use.call(this);
     };
 }
@@ -332,7 +333,28 @@ Gun.prototype.update = function (ms) {
     }
 };
 
-function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate) {
+AudioManager = {};
+
+(function () {
+    var clips = [];
+
+    AudioManager.load = function (fileNames) {
+        var count = fileNames.length;
+        for (var i = 0; i < count; i++) {
+            var fileName = fileNames[i];
+            clips[fileName] = new AudioClip('sounds/' + fileName, true);
+        }
+    };
+
+    AudioManager.play = function (fileName) {
+        var clip = clips[fileName];
+        if (clip) {
+            clip.play();
+        }
+    };
+})();
+
+function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionSoundEffects) {
     Entity.call(this, x, y);
     this.shipWidth = shipWidth;
     this.shipHeight = shipHeight;
@@ -340,6 +362,7 @@ function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTempla
     this.master = master;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
+    this.explosionSoundEffects = explosionSoundEffects;
     // TODO: This whole system of target vs. actual vs. offset is messy and confusing
     this.targetX = x;
     this.targetY = y;
@@ -364,6 +387,15 @@ Ship.prototype.updateOffsets = function (ms) {
     var factor = 1 - (0.015 * ms / 20);
     this.offsetX *= factor;
     this.offsetY *= factor;
+};
+
+Ship.prototype.playExplosionSoundEffects = function () {
+    if (this.explosionSoundEffects) {
+        var count = this.explosionSoundEffects.length;
+        for (var i = 0; i < count; i++) {
+            AudioManager.play(this.explosionSoundEffects[i]);
+        }
+    }
 };
 
 function PlayerShields() {
@@ -409,7 +441,7 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20), ['explosionBig.mp3']);
 
     this.healthLost = new Event();
 
@@ -603,8 +635,8 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(master, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate) {
-    Ship.call(this, master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate);
+function Enemy(master, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate, explosionSoundEffects) {
+    Ship.call(this, master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionSoundEffects);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
@@ -656,7 +688,8 @@ function Straight(master, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
-        ]));
+        ]),
+        ['explosion.mp3']);
     this.elements = [Straight.image];
 }
 
@@ -701,10 +734,12 @@ function Omni(master, x, y) {
     }
 
     Enemy.call(this, master, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, 143, guns, new ExplosionSequence([
-        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
-        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
-        [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
-    ]));
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
+            [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
+    ]),
+    ['explosionBig.mp3']);
+
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
@@ -744,7 +779,11 @@ function RayGun(master, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 30 * 20)]
-        ]));
+        ]),
+        [
+        'explosion.mp3',
+        'explosionBig.mp3'
+        ]);
     this.elements = [RayGun.image];
     this.timer = 0;
     this.movementFactor = 0.5 + Math.random() / 2;
@@ -841,7 +880,8 @@ function Boss0(master, x, y) {
         explosionFrequency *= 1.1;
     }
 
-    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions));
+    // TODO: Boss explosion sound effects
+    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), ['explosion.mp3', 'explosionBig.mp3']);
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -1470,6 +1510,9 @@ Master.prototype.updateGame = function (ms) {
             // Destroyed
             remove = true;
 
+            // Sound effects
+            enemy.playExplosionSoundEffects();
+
             // Add explosion
             var template = enemy.explosionTemplate;
             if (template) {
@@ -1533,6 +1576,10 @@ Master.prototype.updateGame = function (ms) {
 
     // Check for loss
     if (this.player && this.player.health <= 0) {
+        // TODO: Shouldn't this be consolidated into a method on Ship so enemies don't duplicate the code?
+        // Sound effect
+        this.player.playExplosionSoundEffects();
+
         // Add explosion
         var template = this.player.explosionTemplate;
         if (template) {
@@ -1920,6 +1967,13 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/tankShot.png',
         'images/tankShotExplosion.png',
         'images/tankShotFlash.png',
+    ]);
+
+    // TODO: Consider preloading sounds (in addition to images)
+    AudioManager.load([
+        'explosion.mp3',
+        'explosionBig.mp3',
+        'powerup.mp3',
     ]);
 
     Radius.start(new LoadingLayer(loadPromise, function () {
