@@ -915,8 +915,13 @@ function Boss0(master, x, y) {
         explosionFrequency *= 1.1;
     }
 
-    // TODO: Boss explosion sound effects
-    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([['explosion.mp3'], ['explosionBig.mp3']]));
+    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+        ['explosionHuge.mp3'],
+        ['explosion.mp3', 200],
+        ['explosion.mp3', 600],
+        ['explosion.mp3', 800],
+        ['explosionBig.mp3', 1000]
+    ]));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -2008,6 +2013,7 @@ window.addEventListener('DOMContentLoaded', function () {
     AudioManager.load([
         'explosion.mp3',
         'explosionBig.mp3',
+        'explosionHuge.mp3',
         'powerup.mp3',
     ]);
 
