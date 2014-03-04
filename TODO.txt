@@ -10,6 +10,7 @@ Add menus
 Complete more levels
 Pause button?
 Add lives
+Add super bombs
 Add "don't let enemies through" logic/text?
 Handle loading errors
 
