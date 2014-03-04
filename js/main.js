@@ -476,7 +476,14 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20), new AudioTemplate([['explosionBig.mp3']]));
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, 1/*Player.maxHealth*/, 100,
+        new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
+            [new ExplosionTemplate(PowerUp.shadow2Image, 64, 64, 1000)],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20, 10 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20, 13 * 20)],
+        ]),
+        new AudioTemplate([['explosionBig.mp3']]));
 
     this.healthLost = new Event();
 
