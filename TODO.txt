@@ -1,20 +1,15 @@
-﻿Bugs:
-Don't start in the middle of the screen
-
-For alpha 3:
-Super shield sparkles
-
-For beta 1:
+﻿For beta 1:
 Add menus
 Complete more levels
 Pause button?
 Add lives
 Add super bombs
 Add "don't let enemies through" logic/text?
-Handle loading errors
+Add end game message
 
 For final:
-Add touch controls
+Handle loading errors
+Add scoring?
 
 Consider:
 Enemy ammo could "sparkle" by flipping sign on width/height randomly (the original does this)

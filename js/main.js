@@ -522,7 +522,7 @@ function Player(master) {
 
     // Movement
     this.cursorX = 0;
-    this.cursorY = 0;
+    this.cursorY = -Player.boundY;
     this.targetX = this.cursorX;
     this.targetY = this.cursorY;
     this.movingLeft = false;
