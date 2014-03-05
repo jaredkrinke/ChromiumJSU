@@ -1,7 +1,7 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Burst(image, x, y, width1, height1, width2, height2, duration, delay) {
+function Burst(image, x, y, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     Entity.call(this, x, y, width1, height1);
     this.duration = duration;
     this.width1 = width1;
@@ -9,6 +9,9 @@ function Burst(image, x, y, width1, height1, width2, height2, duration, delay) {
     this.width2 = width2;
     this.height2 = height2;
     this.timer = delay ? -delay : 0;
+    this.vx = vx || 0;
+    this.vy = vy || 0;
+    this.maxOpacity = maxOpacity || 1;
     this.elements = [image];
 
     // Make sure opacity gets set initially
@@ -24,7 +27,11 @@ Burst.prototype.update = function (ms) {
         var t = Math.min(1, (this.timer + 100) / (this.duration + 100));
         this.width = this.width1 + (this.width2 - this.width1) * t;
         this.height = this.height1 + (this.height2 - this.height1) * t;
-        this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
+        this.opacity = this.maxOpacity * Math.min(1, 1.2 - this.timer / this.duration);
+
+        // Update position
+        this.x += this.vx * ms;
+        this.y += this.vy * ms;
 
         // Flag for removal if done
         if (this.timer > this.duration) {
@@ -35,7 +42,7 @@ Burst.prototype.update = function (ms) {
     }
 };
 
-function BurstTemplate(image, width1, height1, width2, height2, duration, delay) {
+function BurstTemplate(image, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     this.image = image;
     this.width1 = width1;
     this.height1 = height1;
@@ -43,15 +50,18 @@ function BurstTemplate(image, width1, height1, width2, height2, duration, delay)
     this.height2 = height2;
     this.duration = duration;
     this.delay = delay;
+    this.vx = vx;
+    this.vy = vy;
+    this.maxOpacity = maxOpacity;
 }
 
-BurstTemplate.prototype.instantiate = function (layer, x, y) {
-    layer.addEntity(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay));
+BurstTemplate.prototype.instantiate = function (parent, x, y) {
+    parent.addChild(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay, this.vx, this.vy, this.maxOpacity));
 };
 
-function PowerUp(image, shadowImage, use, layer, x, y) {
+function PowerUp(image, shadowImage, use, master, x, y) {
     Entity.call(this, x, y, 34, 34);
-    this.layer = layer;
+    this.master = master;
     this.vy = -0.051;
     this.baseX = x;
     this.baseY = y;
@@ -60,7 +70,8 @@ function PowerUp(image, shadowImage, use, layer, x, y) {
     this.elements = [shadowImage, image];
     this.flashTemplate = new BurstTemplate(shadowImage, this.width, this.height, this.width / 5, this.height / 5, 500);
     this.use = function () {
-        this.flashTemplate.instantiate(this.layer, this.x, this.y);
+        this.flashTemplate.instantiate(this.master.effects, this.x, this.y);
+        AudioManager.play('powerup.mp3');
         use.call(this);
     };
 }
@@ -89,58 +100,58 @@ PowerUp.prototype.update = function (ms) {
 };
 
 PowerUps = [
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow0Image, function () {
-            if (this.layer.player) {
-                this.layer.player.ammo[0] = 150;
-                this.layer.ammoCollected.fire();
+            if (this.master.player) {
+                this.master.player.ammo[0] = 150;
+                this.master.ammoCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow1Image, function () {
-            if (this.layer.player) {
-                this.layer.player.ammo[1] = 150;
-                this.layer.ammoCollected.fire();
+            if (this.master.player) {
+                this.master.player.ammo[1] = 150;
+                this.master.ammoCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
-            if (this.layer.player) {
-                this.layer.player.ammo[2] = 150;
-                this.layer.ammoCollected.fire();
+            if (this.master.player) {
+                this.master.player.ammo[2] = 150;
+                this.master.ammoCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow3Image, function () {
-            if (this.layer.player) {
-                this.layer.player.health = Player.maxHealth;
-                this.layer.healthCollected.fire();
+            if (this.master.player) {
+                this.master.player.health = Player.maxHealth;
+                this.master.healthCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow4Image, function () {
-            if (this.layer.player) {
-                if (this.layer.player.shields < Player.maxShields) {
-                    this.layer.player.shields = Player.maxShields;
+            if (this.master.player) {
+                if (this.master.player.shields < Player.maxShields) {
+                    this.master.player.shields = Player.maxShields;
                 }
 
-                this.layer.shieldsCollected.fire();
+                this.master.shieldsCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
-    function (layer, x, y) {
+    function (master, x, y) {
         return new PowerUp(PowerUp.shieldImage, PowerUp.shadow5Image, function () {
-            if (this.layer.player) {
-                this.layer.player.health = Player.maxHealth;
-                this.layer.player.shields = 2 * Player.maxShields;
-                this.layer.healthCollected.fire();
-                this.layer.shieldsCollected.fire();
+            if (this.master.player) {
+                this.master.player.health = Player.maxHealth;
+                this.master.player.shields = 2 * Player.maxShields;
+                this.master.healthCollected.fire();
+                this.master.shieldsCollected.fire();
             }
-        }, layer, x, y);
+        }, master, x, y);
     },
 ];
 
@@ -154,7 +165,7 @@ function ExplosionSequence(explosions) {
     this.explosions = explosions;
 }
 
-ExplosionSequence.prototype.instantiate = function (layer, x, y) {
+ExplosionSequence.prototype.instantiate = function (parent, x, y) {
     var count = this.explosions.length;
     for (var i = 0; i < count; i++) {
         // Each item is an array: ExplosionTemplate, [offsetX], [offsetY]
@@ -162,7 +173,7 @@ ExplosionSequence.prototype.instantiate = function (layer, x, y) {
         var template = explosion[0];
         var offsetX = explosion[1] || 0;
         var offsetY = explosion[2] || 0;
-        template.instantiate(layer, x + offsetX, y + offsetY);
+        template.instantiate(parent, x + offsetX, y + offsetY);
     }
 }
 
@@ -184,6 +195,7 @@ Shot.prototype.update = function (ms) {
 };
 
 function Bullet(x, y) {
+    // TODO: Couldn't the explosion templates be shared across all instances?
     Shot.call(this, x, y, Bullet.image, 3, 18, 0, 0.71, 3.5, new ExplosionTemplate(Bullet.explosionImage, 14, 14, 10 * 20));
 }
 
@@ -243,9 +255,9 @@ TankShot.flashImage = new Image('images/tankShotFlash.png', 'purple');
 TankShot.explosionImage = new Image('images/tankShotExplosion.png', 'orange');
 TankShot.prototype = Object.create(Shot.prototype);
 
-function Gun(layer, host, x, y, period, periodRandomMax, shot, flashTemplate, warmupPeriod, elements) {
+function Gun(master, host, x, y, period, periodRandomMax, shot, flashTemplate, warmupPeriod, elements) {
     Entity.call(this, x, y);
-    this.layer = layer;
+    this.master = master;
     this.host = host;
     this.period = period;
     this.periodRandomMax = periodRandomMax;
@@ -264,7 +276,7 @@ Gun.createAimedShot = function () {
     var speed = this.speed;
     var vx = 0;
     var vy = -speed;
-    var target = this.layer.player;
+    var target = this.master.player;
     if (target) {
         var deltaX = target.x - x;
         var deltaY = target.y - y;
@@ -304,14 +316,14 @@ Gun.prototype.fire = function () {
 
     // Add the appropriate kind of shot
     if (this.host instanceof Player) {
-        this.layer.addPlayerShot(shot);
+        this.master.addPlayerShot(shot);
     } else {
-        this.layer.addEnemyShot(shot);
+        this.master.addEnemyShot(shot);
     }
 
     // Add a flash, if provided
     if (this.flashTemplate) {
-        this.flashTemplate.instantiate(this.layer, this.host.x + this.x, this.host.y + this.y);
+        this.flashTemplate.instantiate(this.master.effects, this.host.x + this.x, this.host.y + this.y);
     }
 };
 
@@ -332,14 +344,73 @@ Gun.prototype.update = function (ms) {
     }
 };
 
-function Ship(layer, x, y, shipWidth, shipHeight, health, mass, explosionTemplate) {
+AudioManager = {};
+
+(function () {
+    var clips = [];
+
+    AudioManager.load = function (fileNames) {
+        var count = fileNames.length;
+        for (var i = 0; i < count; i++) {
+            var fileName = fileNames[i];
+            clips[fileName] = new AudioClip('sounds/' + fileName, true);
+        }
+    };
+
+    AudioManager.play = function (fileName) {
+        var clip = clips[fileName];
+        if (clip) {
+            clip.play();
+        }
+    };
+})();
+
+function AudioEffect(fileName, delay) {
+    Entity.call(this);
+    this.timer = 0;
+    this.fileName = fileName;
+    this.delay = delay;
+}
+
+AudioEffect.prototype = Object.create(Entity.prototype);
+
+AudioEffect.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= this.delay) {
+        AudioManager.play(this.fileName);
+        this.dead = true;
+    }
+};
+
+function AudioTemplate(effects) {
+    this.effects = effects;
+}
+
+AudioTemplate.prototype.instantiate = function (parent) {
+    var count = this.effects.length;
+    for (var i = 0; i < count; i++) {
+        var effect = this.effects[i];
+        var fileName = effect[0];
+        var delay = effect[1];
+        if (delay) {
+            // Schedule the clip to play later
+            parent.addChild(new AudioEffect(fileName, delay));
+        } else {
+            // No delay, so play the clip now
+            AudioManager.play(fileName);
+        }
+    }
+};
+
+function Ship(master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionAudioTemplate) {
     Entity.call(this, x, y);
     this.shipWidth = shipWidth;
     this.shipHeight = shipHeight;
     this.mass = mass;
-    this.layer = layer;
+    this.master = master;
     this.health = health;
     this.explosionTemplate = explosionTemplate;
+    this.explosionAudioTemplate = explosionAudioTemplate;
     // TODO: This whole system of target vs. actual vs. offset is messy and confusing
     this.targetX = x;
     this.targetY = y;
@@ -364,6 +435,12 @@ Ship.prototype.updateOffsets = function (ms) {
     var factor = 1 - (0.015 * ms / 20);
     this.offsetX *= factor;
     this.offsetY *= factor;
+};
+
+Ship.prototype.playExplosionSoundEffects = function (parent) {
+    if (this.explosionAudioTemplate) {
+        this.explosionAudioTemplate.instantiate(parent);
+    }
 };
 
 function PlayerShields() {
@@ -395,9 +472,13 @@ function PlayerSuperShields(player) {
     this.player = player;
     this.elements = [PlayerSuperShields.image];
     this.opacity = 0;
+    this.timer = 0;
+    this.sparkleTemplate = new BurstTemplate(PlayerSuperShields.sparkleImage, 22, 22, 22, 22, 20 * 20, 0, 0, -0.2);
 }
 
 PlayerSuperShields.maxOpacity = 0.9;
+PlayerSuperShields.sparklePeriod = 40;
+PlayerSuperShields.sparkleImage = new Image('images/sparkle.png', 'yellow');
 PlayerSuperShields.image = new Image('images/playerSuperShields.png', 'blue', -PlayerShields.shieldWidth / 2, PlayerShields.shieldHeight / 2, PlayerShields.shieldWidth, PlayerShields.shieldHeight);
 PlayerSuperShields.prototype = Object.create(Entity.prototype);
 
@@ -405,11 +486,32 @@ PlayerSuperShields.prototype.update = function (ms) {
     this.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
     if (this.opacity > 0) {
         this.angle = 2 * Math.PI * Math.random();
+
+        // Add sparkles
+        this.timer += ms;
+        while (this.timer >= PlayerSuperShields.sparklePeriod) {
+            var angle = Math.random() * 2 * Math.PI;
+            var distance = PlayerShields.shieldWidth / 2;
+            var x = this.player.x + distance * Math.cos(angle);
+            var y = this.player.y + distance * Math.sin(angle);
+            this.sparkleTemplate.maxOpacity = this.opacity;
+            this.sparkleTemplate.instantiate(this.player.master.effects, x, y);
+            this.timer -= PlayerSuperShields.sparklePeriod;
+        }
+    } else {
+        this.timer = 0;
     }
 };
 
-function Player(layer) {
-    Ship.call(this, layer, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100, new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20));
+function Player(master) {
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100,
+        new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
+            [new ExplosionTemplate(PowerUp.shadow2Image, 64, 64, 1000)],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20, 10 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20, 13 * 20)],
+        ]),
+        new AudioTemplate([['explosionBig.mp3']]));
 
     this.healthLost = new Event();
 
@@ -420,25 +522,29 @@ function Player(layer) {
 
     // Movement
     this.cursorX = 0;
-    this.cursorY = 0;
+    this.cursorY = -Player.boundY;
     this.targetX = this.cursorX;
     this.targetY = this.cursorY;
+    this.movingLeft = false;
+    this.movingRight = false;
+    this.movingUp = false;
+    this.movingDown = false;
 
     // Weapons
     var defaultGun = [
-        new Gun(layer, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
-        new Gun(layer, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(master, this, 9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(master, this, -9, 10, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
     ];
     var machineGun = [
-        new Gun(layer, this, 14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
-        new Gun(layer, this, -14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(master, this, 14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
+        new Gun(master, this, -14, -5, 100, 0, Bullet, new ExplosionTemplate(Bullet.flashImage, 14, 14, 3 * 20)),
     ];
     var plasma = [
-        new Gun(layer, this, 0, 10, 500, 0, Plasma, new ExplosionTemplate(Plasma.flashImage, 28, 28, 10 * 20)),
+        new Gun(master, this, 0, 10, 500, 0, Plasma, new ExplosionTemplate(Plasma.flashImage, 28, 28, 10 * 20)),
     ];
     var emp = [
-        new Gun(layer, this, -20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20)),
-        new Gun(layer, this, 20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
+        new Gun(master, this, -20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20)),
+        new Gun(master, this, 20, -10, 200, 0, Emp, new ExplosionTemplate(Emp.flashImage, 28, 28, 5 * 20), 100)
     ];
 
     this.guns = defaultGun.concat(machineGun, plasma, emp);
@@ -473,9 +579,9 @@ function Player(layer) {
     limitAmmo(emp, 2, 1.5);
 
     // Set up children
-    this.children = this.guns.slice();
-    this.children.push(this.shieldImage);
-    this.children.push(this.superShieldImage);
+    this.addChildren(this.guns);
+    this.addChild(this.shieldImage);
+    this.addChild(this.superShieldImage);
 }
 
 Player.maxHealth = 500;
@@ -487,6 +593,7 @@ Player.exhaustWidth = 37;
 Player.exhaustHeight = 37;
 Player.exhaustImage = new Image('images/empFlash.png', 'blue', -Player.exhaustWidth / 2, Player.exhaustHeight / 2 - 18, Player.exhaustWidth, Player.exhaustHeight, 0.7);
 Player.mouseSpeed = 1280 / 1000;
+Player.keyboardSpeed = Player.mouseSpeed / 3;
 Player.movementThreshold = 0.5;
 Player.prototype = Object.create(Ship.prototype);
 Player.boundX = 284;
@@ -499,12 +606,27 @@ Player.prototype.reset = function () {
     }
 };
 
-// TODO: Keyboard
 Player.prototype.setFiring = function (firing) {
     var count = this.guns.length;
     for (var i = 0; i < count; i++) {
         this.guns[i].setFiring(firing);
     }
+};
+
+Player.prototype.setMovingLeft = function (pressed) {
+    this.movingLeft = pressed;
+};
+
+Player.prototype.setMovingRight = function (pressed) {
+    this.movingRight = pressed;
+};
+
+Player.prototype.setMovingUp = function (pressed) {
+    this.movingUp = pressed;
+};
+
+Player.prototype.setMovingDown = function (pressed) {
+    this.movingDown = pressed;
 };
 
 Player.prototype.takeDamage = function (damage) {
@@ -535,6 +657,30 @@ Player.prototype.update = function (ms) {
     // Update guns
     this.updateChildren(ms);
 
+    // Move based on keyboard input
+    var moveX = 0;
+    var moveY = 0;
+    moveX += (this.movingLeft ? -1 : 0);
+    moveX += (this.movingRight ? 1 : 0);
+    moveY += (this.movingUp ? 1 : 0);
+    moveY += (this.movingDown ? -1 : 0);
+    if (moveX || moveY) {
+        var distance = ms * Player.keyboardSpeed;
+        var angle = Math.atan2(moveY, moveX);
+        this.targetX += distance * Math.cos(angle);
+        this.targetY += distance * Math.sin(angle);
+
+        // Boundaries
+        this.targetX = Math.max(-Player.boundX, Math.min(Player.boundX, this.targetX));
+        this.targetY = Math.max(-Player.boundY, Math.min(Player.boundY, this.targetY));
+
+        // Set the cursor position to here so that any previous mouse input will be ignored
+        this.setCursorPosition(this.targetX, this.targetY);
+
+        // Hide the mouse cursor since we're using keyboard input for now (the next mouse input will switch it back)
+        this.master.playerCursor.setVisible(false);
+    }
+
     // Move based on the cursor
     var dx = this.cursorX - this.targetX;
     var dy = this.cursorY - this.targetY;
@@ -559,13 +705,13 @@ Player.prototype.update = function (ms) {
     this.updateOffsets(ms);
 };
 
-function Enemy(layer, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate) {
-    Ship.call(this, layer, x, y, shipWidth, shipHeight, health, mass, explosionTemplate);
+function Enemy(master, x, y, shipWidth, shipHeight, speed, health, mass, guns, explosionTemplate, explosionAudioTemplate) {
+    Ship.call(this, master, x, y, shipWidth, shipHeight, health, mass, explosionTemplate, explosionAudioTemplate);
     // TODO: It seems like bounds should be based on size...
     this.x = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, x));
     this.speed = speed;
-    this.target = layer.player;
-    this.children = guns.slice();
+    this.target = master.player;
+    this.addChildren(guns);
     this.guns = guns;
 }
 
@@ -604,15 +750,16 @@ Enemy.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
-function Straight(layer, x, y) {
-    Enemy.call(this, layer, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + Math.random() * 0.0569, 110, 200,
-        [new Gun(layer, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
+function Straight(master, x, y) {
+    Enemy.call(this, master, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + Math.random() * 0.0569, 110, 200,
+        [new Gun(master, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 15 * 20)]
-        ]));
+        ]),
+        new AudioTemplate([['explosion.mp3']]));
     this.elements = [Straight.image];
 }
 
@@ -624,8 +771,8 @@ Straight.chargeHeight = 16;
 Straight.chargeImage = new Image('images/straightShot.png', 'red', -Straight.chargeWidth / 2, Straight.chargeHeight / 2, Straight.chargeWidth, Straight.chargeHeight);
 Straight.prototype = Object.create(Enemy.prototype);
 
-function OmniGun(layer, host, x, y, warmupPeriod) {
-    Gun.call(this, layer, host, x, y, 108 * 20, 0, OmniShot, undefined, warmupPeriod);
+function OmniGun(master, host, x, y, warmupPeriod) {
+    Gun.call(this, master, host, x, y, 108 * 20, 0, OmniShot, undefined, warmupPeriod);
     this.speed = 0.5;
 }
 
@@ -650,21 +797,23 @@ Spinner.prototype.update = function (ms) {
     }
 };
 
-function Omni(layer, x, y) {
+function Omni(master, x, y) {
     var guns = [];
     for (var i = 0; i < 18; i++) {
-        guns.push(new OmniGun(layer, this, 0, 0, i * 20));
+        guns.push(new OmniGun(master, this, 0, 0, i * 20));
     }
 
-    Enemy.call(this, layer, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, 143, guns, new ExplosionSequence([
-        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
-        [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
-        [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
-    ]));
+    Enemy.call(this, master, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, 143, guns, new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
+            [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
+            [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
+    ]),
+    new AudioTemplate([['explosionBig.mp3']]));
+
     this.movementFactor = Math.random();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
-    this.children.push(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
+    this.addChild(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
 }
 
 Omni.shipWidth = 40;
@@ -689,9 +838,9 @@ Omni.prototype.updateTargetLocation = function (ms) {
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
-function RayGun(layer, x, y) {
-    Enemy.call(this, layer, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000, 500,
-        [new Gun(layer, this, 0, -31, 20, 0, RayGunShot)],
+function RayGun(master, x, y) {
+    Enemy.call(this, master, x, y, RayGun.shipWidth, RayGun.shipHeight, 0.043, 1000, 500,
+        [new Gun(master, this, 0, -31, 20, 0, RayGunShot)],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
@@ -700,6 +849,10 @@ function RayGun(layer, x, y) {
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 30 * 20)]
+        ]),
+        new AudioTemplate([
+        ['explosion.mp3'],
+        ['explosionBig.mp3']
         ]));
     this.elements = [RayGun.image];
     this.timer = 0;
@@ -758,24 +911,24 @@ RayGun.prototype.updateGuns = function (ms) {
     }
 };
 
-function Boss0(layer, x, y) {
+function Boss0(master, x, y) {
     // Create guns
-    this.rayGun = new Gun(layer, this, 0, -48, 20, 0, RayGunShot);
+    this.rayGun = new Gun(master, this, 0, -48, 20, 0, RayGunShot);
     this.straightGuns = [
-        new Gun(layer, this, 57, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, 68, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, 79, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, -57, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, -68, -54, 3 * 20, 0, StraightShot),
-        new Gun(layer, this, -79, -54, 3 * 20, 0, StraightShot)
+        new Gun(master, this, 57, -54, 3 * 20, 0, StraightShot),
+        new Gun(master, this, 68, -54, 3 * 20, 0, StraightShot),
+        new Gun(master, this, 79, -54, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -57, -54, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -68, -54, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -79, -54, 3 * 20, 0, StraightShot)
     ];
     this.omniGuns = [
-        new Gun(layer, this, 31, -13, 50 * 20, 0, OmniShot),
-        new Gun(layer, this, -31, -13, 50 * 20, 0, OmniShot)
+        new Gun(master, this, 31, -13, 50 * 20, 0, OmniShot),
+        new Gun(master, this, -31, -13, 50 * 20, 0, OmniShot)
     ];
     this.tankGuns = [
-        new Gun(layer, this, -31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20)),
-        new Gun(layer, this, 31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20))
+        new Gun(master, this, -31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20)),
+        new Gun(master, this, 31, -13, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20))
     ];
     var guns = [this.rayGun];
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
@@ -797,7 +950,13 @@ function Boss0(layer, x, y) {
         explosionFrequency *= 1.1;
     }
 
-    Enemy.call(this, layer, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions));
+    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+        ['explosionHuge.mp3'],
+        ['explosion.mp3', 200],
+        ['explosion.mp3', 600],
+        ['explosion.mp3', 800],
+        ['explosionBig.mp3', 1000]
+    ]));
 
     this.moveTimer = 0;
     this.lastMoveX = 0;
@@ -939,7 +1098,6 @@ GroundSegment.prototype.update = function (ms) {
 
 function Ground(template) {
     Entity.call(this);
-    this.children = [];
 
     var scaleY = 1;
     var screenHeight = 480;
@@ -953,7 +1111,7 @@ function Ground(template) {
         var scaleX = 1;
         var x = -screenWidth / 2 + template.segmentWidth / 2;
         for (var j = 0; j < columns; j++) {
-            this.children.push(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
+            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
             scaleX = -scaleX;
             x += template.segmentWidth;
         }
@@ -1025,8 +1183,8 @@ Wave = {
 }
 
 // TODO: Maybe take a maximum time and reject all adds that come after that?
-function Level(layer, waves) {
-    this.layer = layer;
+function Level(master, waves) {
+    this.master = master;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
     var count = waves.length;
@@ -1144,7 +1302,7 @@ Level.prototype.addPowerUps = function (start, duration, firsts) {
         // Loop through and add the power-up
         var t = start + firsts[j] + randomModifiers[j] * Math.random();
         while (t < start + duration) {
-            this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), GameLayer.boundY));
+            this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
             t += frequencies[j] + (Math.random() - 0.5) * randomModifiers[j] * 2;
         }
     }
@@ -1156,24 +1314,364 @@ Level.prototype.update = function (ms) {
     while ((action = this.queue.first()) && this.timer >= action.time) {
         action = this.queue.remove();
         // TODO: It would probably be better to move this logic into a generic "add item" in the layer itself
-        var item = new action.factory(this.layer, action.x, action.y);
+        var item = new action.factory(this.master, action.x, action.y);
         if (item instanceof Enemy) {
-            this.layer.addEnemy(item);
+            this.master.addEnemy(item);
         } else if (item instanceof PowerUp) {
-            this.layer.addPowerUp(item);
+            this.master.addPowerUp(item);
         }
     }
 };
 
 function Master(layer) {
+    Entity.call(this);
     this.layer = layer;
+
+    // Events
+    this.ammoCollected = new Event();
+    this.healthCollected = new Event();
+    this.shieldsCollected = new Event();
+
+    // Background
+    this.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.addChild(new Ground(GroundTemplates.metal));
+
+    // Player (and cursor)
+    this.addChild(this.playerCursor = new Cursor(this));
+    this.addChild(this.player = new Player(this));
+    this.addChild(this.playerShots = new Entity());
+
+    // Enemies
+    this.addChild(this.enemies = new Entity());
+    this.addChild(this.enemyShots = new Entity());
+
+    // Power-ups
+    this.addChild(this.powerups = new Entity());
+
+    // Special effects
+    this.addChild(this.effects = new Entity());
 }
 
-// TODO: Should the layer just have its own "update" function?
 Master.prototype = Object.create(Entity.prototype);
+Master.boundX = 640;
+Master.boundY = 284;
+Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
+
+Master.prototype.reset = function () {
+    // TODO: Implement a real reset (clearing effects, etc.)
+    this.player.reset();
+
+    // Turn off the mouse cursor since the player moves with the mouse
+    this.layer.cursor = 'none';
+
+    // TODO: Don't just load this by default
+    this.level = this.loadLevel1();
+
+    // TODO: Load a level instead of testing one enemy
+    //this.level = new Level(this, [{
+    //    factory: function (start, duration, density) {
+    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //    },
+
+    //    start: 0,
+    //    duration: 100
+    //}]);
+};
+
+Master.prototype.addPlayerShot = function (shot) {
+    this.playerShots.addChild(shot);
+};
+
+Master.prototype.removePlayerShot = function (shot) {
+    this.playerShots.removeChild(shot);
+};
+
+Master.prototype.addEnemy = function (enemy) {
+    this.enemies.addChild(enemy);
+};
+
+Master.prototype.removeEnemy = function (enemy) {
+    this.enemies.removeChild(enemy);
+};
+
+Master.prototype.addEnemyShot = function (shot) {
+    this.enemyShots.addChild(shot);
+};
+
+Master.prototype.removeEnemyShot = function (shot) {
+    this.enemyShots.removeChild(shot);
+};
+
+Master.prototype.addPowerUp = function (powerup) {
+    this.powerups.addChild(powerup);
+};
+
+Master.prototype.removePowerUp = function (powerup) {
+    this.powerups.removeChild(powerup);
+};
+
+Master.prototype.checkShotCollision = function (shot, b) {
+    var bw = b.shipWidth / 2;
+    var bh = b.shipHeight / 2;
+    return (shot.x >= b.x - bw)
+        && (shot.x <= b.x + bw)
+        && (shot.y >= b.y - bh)
+        && (shot.y <= b.y + bh);
+};
+
+Master.prototype.checkShipCollision = function (a, b) {
+    // Not particularly precise, but true to the original...
+    var x = a.x - b.x;
+    var y = a.y - b.y;
+    var distance = Math.abs(x) + Math.abs(y);
+    return distance < (a.shipWidth + b.shipHeight) / 4;
+};
+
+Master.prototype.checkPowerUpCollision = function (ship, powerup) {
+    // Again, kind of odd logic here
+    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
+    return distance < ship.shipHeight / 2;
+};
+
+// TODO: Where should this code go?
+Master.prototype.loadLevel1 = function (master) {
+    var totalTime = 12000 * 20;
+    var waveDuration = 500;
+    time = 600 * 20;
+    var waves = [];
+
+    // Always add the same first wave
+    waves.push({
+        factory: Level.prototype.addStraightWave,
+        start: 1,
+        duration: time,
+        density: 0.4
+    });
+
+    // Now add random waves
+    while (time < totalTime - 1000 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.15) {
+            // 15% chance
+            factory = Level.prototype.addStraightArrowWave;
+        } else if (r < 0.25) {
+            // 10% chance
+            factory = Level.prototype.addOmniArrowWave;
+        } else if (r > 0.6) {
+            // 60% chance
+            factory = Level.prototype.addStraightWave;
+        } else {
+            // 15% chance
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // Ray gun starts half way through
+    waves.push({
+        factory: Level.prototype.addRayGunWave,
+        start: totalTime / 2,
+        duration: totalTime - 1000 * 20 - totalTime / 2
+    });
+
+    // Boss
+    waves.push({
+        factory: Level.prototype.addBoss0Wave,
+        start: totalTime + 75 * 20,
+        duration: (1000 - 75) * 20
+    });
+
+
+    // Ammunition and power-ups
+    var level = new Level(this, waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
 
 Master.prototype.update = function (ms) {
-    this.layer.updateGame(ms);
+    this.updateGame(ms);
+    this.updateChildren(ms);
+};
+
+Master.prototype.updateGame = function (ms) {
+    // Check bounds and collisions for player shots
+    this.playerShots.forEachChild(function (shot) {
+        var remove = false;
+
+        if (shot.y > Master.boundY) {
+            // Out of bounds
+            remove = true;
+        } else {
+            // Check collisions
+            this.enemies.forEachChild(function (enemy) {
+                if (this.checkShotCollision(shot, enemy)) {
+                    if (shot.permanent) {
+                        // Scale damage based on time for permanent shots
+                        enemy.health -= shot.damage * ms / 20;
+                    } else {
+                        enemy.health -= shot.damage;
+                        remove = true;
+                    }
+
+                    // Add explosion
+                    // TODO: Permanent shots (plasma) should add explosions on a timer...
+                    shot.explosionTemplate.instantiate(this.effects, shot.x, shot.y);
+                }
+            }, this);
+        }
+
+        if (remove) {
+            this.removePlayerShot(shot);
+        }
+    }, this);
+
+    // Check bounds and collisions for enemy shots
+    this.enemyShots.forEachChild(function (shot) {
+        var remove = false;
+
+        if (shot.y < -Master.boundY
+            || shot.y > Master.boundY
+            || shot.x < -Master.boundX
+            || shot.x > Master.boundX) {
+            remove = true;
+        } else {
+            // Check collisions
+            // TODO: This is actually a different algorithm than in the original (it used the average of width and
+            // height compared to the Manhattan distance...)
+            if (this.player && this.checkShotCollision(shot, this.player)) {
+                this.player.takeDamage(shot.damage);
+                remove = true;
+
+                // Knock back
+                // TODO: Should this also knock horizontally?
+                this.player.offsetY += shot.damage / 0.87 * shot.vy;
+
+                // Add explosion
+                shot.explosionTemplate.instantiate(this.effects, shot.x, shot.y);
+            }
+        }
+
+        if (remove) {
+            this.removeEnemyShot(shot);
+        }
+    }, this);
+
+    // Check bounds, health, collisions for enemies
+    this.enemies.forEachChild(function (enemy) {
+        var remove = false;
+        if (enemy.y < -Master.boundY) {
+            // Out of bounds
+            // TODO: This should cause the player to lose a life
+            remove = true;
+        } else if (enemy.health <= 0) {
+            // Destroyed
+            remove = true;
+
+            // Sound effects
+            enemy.playExplosionSoundEffects(this.effects);
+
+            // Add explosion
+            var template = enemy.explosionTemplate;
+            if (template) {
+                template.instantiate(this.effects, enemy.x, enemy.y);
+            }
+        } else if (this.player && this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
+            // TODO: Move to helper on Player?
+            var damage = Math.min(35, enemy.health / 2);
+            this.player.takeDamage(damage);
+            enemy.health -= 40;
+
+            // Knock player
+            var deltaX = (this.player.x - enemy.x);
+            var deltaY = (this.player.y - enemy.y);
+            this.player.offsetX += deltaX * damage * 0.04;
+            this.player.offsetY += deltaY * damage * 0.04;
+
+            // Knock enemy
+            var massFactor = this.player.mass / enemy.mass;
+            enemy.offsetX -= deltaX * massFactor;
+            enemy.offsetY -= deltaY * massFactor / 2;
+
+            // Add explosions
+            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
+            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
+
+            Master.collisionExplosionTemplate.instantiate(this.effects, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
+
+            if (this.player.shields <= 0) {
+                Master.collisionExplosionTemplate.instantiate(this.effects, this.player.x + explosionOffsetX, this.player.y + explosionOffsetY + 6);
+            }
+        }
+
+        if (remove) {
+            this.removeEnemy(enemy);
+        }
+    }, this);
+
+    // Check bounds and collisions for power-ups
+    this.powerups.forEachChild(function (powerup) {
+        var remove = false;
+
+        if (powerup.y < -Master.boundY
+            || powerup.y > Master.boundY
+            || powerup.x < -Master.boundX
+            || powerup.x > Master.boundX) {
+            remove = true;
+        } else {
+            // Check collisions
+            if (this.player && this.checkPowerUpCollision(this.player, powerup)) {
+                // Apply the power-up
+                powerup.use();
+                remove = true;
+            }
+        }
+
+        if (remove) {
+            this.removePowerUp(powerup);
+        }
+    }, this);
+
+    // Check for loss
+    if (this.player && this.player.health <= 0) {
+        // TODO: Shouldn't this be consolidated into a method on Ship so enemies don't duplicate the code?
+        // Sound effect
+        this.player.playExplosionSoundEffects(this.effects);
+
+        // Add explosion
+        var template = this.player.explosionTemplate;
+        if (template) {
+            template.instantiate(this.effects, this.player.x, this.player.y);
+        }
+
+        this.removeChild(this.player);
+        this.player = null;
+
+        // Re-enable the cursor
+        this.layer.cursor = 'auto';
+    }
+
+    // Add new enemies according to the level
+    if (this.level) {
+        this.level.update(ms);
+    }
 };
 
 function Electricity(x, y, width, height) {
@@ -1254,12 +1752,12 @@ Blink.prototype.blink = function () {
     }
 };
 
-function Display(layer, player) {
-    this.layer = layer;
-    this.player = player;
+function Display(master) {
+    this.master = master;
     this.blinkTimer = 0;
     this.blink = false;
 
+    var player = master.player;
     var x = -299;
     var y = 227;
     this.ammo = [];
@@ -1283,17 +1781,17 @@ function Display(layer, player) {
 
     // Flash the ammo area's background when ammo is collected
     var display = this;
-    layer.ammoCollected.addListener(function () {
+    master.ammoCollected.addListener(function () {
         display.ammoBackground.opacity = 1;
     });
 
     // Health/shield pick-up electricity effect
     this.electricityLeft = new Electricity(-320, 0, 65, 160);
     this.electricityRight = new Electricity(320 - 65, 0, 65, 160);
-    layer.healthCollected.addListener(function () {
+    master.healthCollected.addListener(function () {
         display.electricityRight.flash();
     });
-    layer.shieldsCollected.addListener(function () {
+    master.shieldsCollected.addListener(function () {
         display.electricityLeft.flash();
     });
 
@@ -1303,10 +1801,11 @@ function Display(layer, player) {
         display.healthBlink.blink();
     });
 
-    this.children = [this.electricityLeft, this.electricityRight, this.healthBlink];
+    this.addChild(this.electricityLeft);
+    this.addChild(this.electricityRight);
+    this.addChild(this.healthBlink);
 }
 
-// TODO: Need a way to share the underlying image
 Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
 Display.statRightImage = new Image('images/statBackground.png', 'darkgray', 320 - 65, 240, 65, 480);
 Display.statTopLeftImage = new Image('images/statTop.png', 'darkgray', -320, 240, 65, 94, 0.5);
@@ -1335,27 +1834,28 @@ Display.prototype.update = function (ms) {
         this.blinkTimer -= Display.blinkPeriod;
     }
 
-    if (this.player) {
+    var player = this.master.player;
+    if (player) {
         // Update ammo
-        var count = this.player.ammo.length;
+        var count = player.ammo.length;
         for (var i = 0; i < count; i++) {
-            this.ammo[i].height = 1.5 * this.player.ammo[i];
-            this.ammo[i].opacity = (this.blink || this.player.ammo[i] > Display.ammoBlinkThreshold) ? 1 : Display.blinkOpacity;
+            this.ammo[i].height = 1.5 * player.ammo[i];
+            this.ammo[i].opacity = (this.blink || player.ammo[i] > Display.ammoBlinkThreshold) ? 1 : Display.blinkOpacity;
         }
 
         // Update health
-        var height = Math.max(0, this.player.health / Player.maxHealth * Display.barMaxHeight);
+        var height = Math.max(0, player.health / Player.maxHealth * Display.barMaxHeight);
         this.healthBar.height = height;
         this.healthBar.y = Display.barBaseY + height;
-        this.healthBar.opacity = (this.blink || this.player.shields > 0 || this.player.health > Display.healthBlinkThreshold) ? 1 : Display.blinkOpacity;
+        this.healthBar.opacity = (this.blink || player.shields > 0 || player.health > Display.healthBlinkThreshold) ? 1 : Display.blinkOpacity;
 
         // Update shields
-        height = Math.min(Display.barMaxHeight, Math.max(0, this.player.shields / Player.maxShields * Display.barMaxHeight));
+        height = Math.min(Display.barMaxHeight, Math.max(0, player.shields / Player.maxShields * Display.barMaxHeight));
         this.shieldBar.height = height;
         this.superShieldBar.height = height;
         this.shieldBar.y = Display.barBaseY + height;
         this.superShieldBar.y = this.shieldBar.y;
-        this.superShieldBar.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
+        this.superShieldBar.opacity = Math.max(0, (player.shields - Player.maxShields) / Player.maxShields);
     }
 
     if (this.ammoBackground.opacity > Display.defaultOpacity) {
@@ -1365,435 +1865,104 @@ Display.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
-function Cursor(layer) {
+function Cursor(master) {
     Entity.call(this, 0, 0, Cursor.size, Cursor.size);
-    this.layer = layer;
-    this.opacity = 0.35;
+    this.master = master;
+    this.opacity = 0;
     this.elements = [new Rectangle(undefined, undefined, undefined, undefined, 'white')];
 }
 
 Cursor.size = 5;
 Cursor.offsetY = (240 - Player.boundY) - 10;
+Cursor.opacity = 0.35;
 Cursor.prototype = Object.create(Entity.prototype);
 
 Cursor.prototype.setPosition = function (x, y) {
+    this.setVisible(true);
     this.x = x;
     this.y = y;
 
-    if (this.layer.player) {
-        this.layer.player.setCursorPosition(x, y + Cursor.offsetY);
+    if (this.master.player) {
+        this.master.player.setCursorPosition(x, y + Cursor.offsetY);
     }
+};
+
+Cursor.prototype.setVisible = function (visible) {
+    this.opacity = (visible ? Cursor.opacity : 0);
 };
 
 function GameLayer() {
     Layer.call(this);
 
-    this.ammoCollected = new Event();
-    this.healthCollected = new Event();
-    this.shieldsCollected = new Event();
+    this.master = new Master(this);
+    this.display = new Display(this.master);
 
-    this.addEntity(new Master(this));
-    this.ground = this.addEntity(new Ground(GroundTemplates.metalHighlight));
-    this.ground = this.addEntity(new Ground(GroundTemplates.metal));
-    this.playerCursor = this.addEntity(new Cursor(this));
-    this.player = this.addEntity(new Player(this));
-    this.display = this.addEntity(new Display(this, this.player));
-    this.playerShots = [];
-    this.enemies = [];
-    this.enemyShots = [];
-    this.powerups = [];
-    this.reset();
+    this.addEntity(this.master);
+    this.addEntity(this.display);
+
+    // TODO: This should also reset the display (and anything in the layer, if necessary)
+    this.master.reset();
+
+    // Keyboard controls
+    this.keyPressedHandlers = {
+        up: GameLayer.prototype.moveUp,
+        down: GameLayer.prototype.moveDown,
+        left: GameLayer.prototype.moveLeft,
+        right: GameLayer.prototype.moveRight,
+        space: GameLayer.prototype.fire,
+        z: GameLayer.prototype.fire
+    };
 }
 
-GameLayer.boundX = 640;
-GameLayer.boundY = 284;
-GameLayer.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
 GameLayer.prototype = Object.create(Layer.prototype);
-
-GameLayer.prototype.reset = function () {
-    this.player.reset();
-    this.clearPlayerShots();
-    this.clearEnemies();
-    this.clearEnemyShots();
-    this.clearPowerUps();
-
-    // Turn off the mouse cursor since the player moves with the mouse
-    this.cursor = 'none';
-
-    // TODO: Remove all entities (so that special effects get removed); don't forget to re-add the player...
-    // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
-
-    // TODO: Load a level instead of testing one enemy
-    //this.level = new Level(this, [{
-    //    factory: function (start, duration, density) {
-    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
-    //    },
-
-    //    start: 0,
-    //    duration: 100
-    //}]);
-};
-
-GameLayer.prototype.addPlayerShot = function (shot) {
-    this.playerShots.push(this.addEntity(shot));
-};
-
-GameLayer.prototype.removePlayerShot = function (shot) {
-    var index = this.playerShots.indexOf(shot);
-    if (index >= 0) {
-        this.removeEntity(this.playerShots[index]);
-        this.playerShots.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearPlayerShots = function () {
-    while (this.playerShots.length > 0) {
-        this.removePlayerShot(this.playerShots[0]);
-    }
-};
-
-GameLayer.prototype.addEnemy = function (enemy) {
-    this.enemies.push(this.addEntity(enemy));
-};
-
-GameLayer.prototype.removeEnemy = function (enemy) {
-    var index = this.enemies.indexOf(enemy);
-    if (index >= 0) {
-        this.removeEntity(this.enemies[index]);
-        this.enemies.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearEnemies = function () {
-    while (this.enemies.length > 0) {
-        this.removeEnemy(this.enemies[0]);
-    }
-};
-
-GameLayer.prototype.addEnemyShot = function (shot) {
-    this.enemyShots.push(this.addEntity(shot));
-};
-
-GameLayer.prototype.removeEnemyShot = function (shot) {
-    var index = this.enemyShots.indexOf(shot);
-    if (index >= 0) {
-        this.removeEntity(this.enemyShots[index]);
-        this.enemyShots.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearEnemyShots = function () {
-    while (this.enemyShots.length > 0) {
-        this.removeEnemyShot(this.enemyShots[0]);
-    }
-};
-
-GameLayer.prototype.addPowerUp = function (powerup) {
-    this.powerups.push(this.addEntity(powerup));
-};
-
-GameLayer.prototype.removePowerUp = function (powerup) {
-    var index = this.powerups.indexOf(powerup);
-    if (index >= 0) {
-        this.removeEntity(this.powerups[index]);
-        this.powerups.splice(index, 1);
-    }
-};
-
-GameLayer.prototype.clearPowerUps = function () {
-    while (this.powerups.length > 0) {
-        this.removePowerUp(this.powerups[0]);
-    }
-};
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
-    this.playerCursor.setPosition(x, y);
+    this.master.playerCursor.setPosition(x, y);
 };
 
 // TODO: It would be nice to have shooting work while the mouse is outside the canvas...
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
-    if (button === MouseButton.primary && this.player) {
-        this.player.setFiring(pressed);
+    if (button === MouseButton.primary && this.master.player) {
+        this.master.player.setFiring(pressed);
     }
 };
 
 GameLayer.prototype.mouseOut = function () {
     // Stop firing if the mouse left the canvas
-    if (this.player) {
-        this.player.setFiring(false);
+    if (this.master.player) {
+        this.master.player.setFiring(false);
     }
 };
 
-GameLayer.prototype.checkShotCollision = function (shot, b) {
-    var bw = b.shipWidth / 2;
-    var bh = b.shipHeight / 2;
-    return (shot.x >= b.x - bw)
-        && (shot.x <= b.x + bw)
-        && (shot.y >= b.y - bh)
-        && (shot.y <= b.y + bh);
-};
-
-GameLayer.prototype.checkShipCollision = function (a, b) {
-    // Not particularly precise, but true to the original...
-    var x = a.x - b.x;
-    var y = a.y - b.y;
-    var distance = Math.abs(x) + Math.abs(y);
-    return distance < (a.shipWidth + b.shipHeight) / 4;
-};
-
-GameLayer.prototype.checkPowerUpCollision = function (ship, powerup) {
-    // Again, kind of odd logic here
-    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
-    return distance < ship.shipHeight / 2;
-};
-
-GameLayer.prototype.updateGame = function (ms) {
-    // Check bounds and collisions for player shots
-    var count = this.playerShots.length;
-    for (var i = 0; i < count; i++) {
-        var shot = this.playerShots[i];
-        var remove = false;
-
-        if (shot.y > GameLayer.boundY) {
-            // Out of bounds
-            remove = true;
-        } else {
-            // Check collisions
-            var enemyCount = this.enemies.length;
-            for (var j = 0; j < enemyCount; j++) {
-                var enemy = this.enemies[j];
-                if (this.checkShotCollision(shot, enemy)) {
-                    if (shot.permanent) {
-                        // Scale damage based on time for permanent shots
-                        enemy.health -= shot.damage * ms / 20;
-                    } else {
-                        enemy.health -= shot.damage;
-                        remove = true;
-                    }
-
-                    // Add explosion
-                    // TODO: Permanent shots (plasma) should add explosions on a timer...
-                    shot.explosionTemplate.instantiate(this, shot.x, shot.y);
-                }
-            }
-        }
-
-        if (remove) {
-            this.removePlayerShot(shot);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds and collisions for enemy shots
-    count = this.enemyShots.length;
-    for (i = 0; i < count; i++) {
-        var shot = this.enemyShots[i];
-        var remove = false;
-
-        if (shot.y < -GameLayer.boundY
-            || shot.y > GameLayer.boundY
-            || shot.x < -GameLayer.boundX
-            || shot.x > GameLayer.boundX) {
-            remove = true;
-        } else {
-            // Check collisions
-            // TODO: This is actually a different algorithm than in the original (it used the average of width and
-            // height compared to the Manhattan distance...)
-            if (this.player && this.checkShotCollision(shot, this.player)) {
-                this.player.takeDamage(shot.damage);
-                remove = true;
-
-                // Knock back
-                // TODO: Should this also knock horizontally?
-                this.player.offsetY += shot.damage / 0.87 * shot.vy;
-
-                // Add explosion
-                shot.explosionTemplate.instantiate(this, shot.x, shot.y);
-            }
-        }
-
-        if (remove) {
-            this.removeEnemyShot(shot);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds, health, collisions for enemies
-    count = this.enemies.length;
-    for (i = 0; i < count; i++) {
-        var enemy = this.enemies[i];
-        var remove = false;
-        if (enemy.y < -GameLayer.boundY) {
-            // Out of bounds
-            // TODO: This should cause the player to lose a life
-            remove = true;
-        } else if (enemy.health <= 0) {
-            // Destroyed
-            remove = true;
-
-            // Add explosion
-            var template = enemy.explosionTemplate;
-            if (template) {
-                template.instantiate(this, enemy.x, enemy.y);
-            }
-        } else if (this.player && this.player.health > 0 && this.checkShipCollision(this.player, enemy)) {
-            // TODO: Move to helper on Player?
-            var damage = Math.min(35, enemy.health / 2);
-            this.player.takeDamage(damage);
-            enemy.health -= 40;
-
-            // Knock player
-            var deltaX = (this.player.x - enemy.x);
-            var deltaY = (this.player.y - enemy.y);
-            this.player.offsetX += deltaX * damage * 0.04;
-            this.player.offsetY += deltaY * damage * 0.04;
-
-            // Knock enemy
-            var massFactor = this.player.mass / enemy.mass;
-            enemy.offsetX -= deltaX * massFactor;
-            enemy.offsetY -= deltaY * massFactor / 2;
-
-            // Add explosions
-            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
-            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
-
-            GameLayer.collisionExplosionTemplate.instantiate(this, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
-
-            if (this.player.shields <= 0) {
-                GameLayer.collisionExplosionTemplate.instantiate(this, this.player.x + explosionOffsetX, this.player.y + explosionOffsetY + 6);
-            }
-        }
-
-        if (remove) {
-            this.removeEnemy(enemy);
-            i--;
-            count--;
-        }
-    }
-
-    // Check bounds and collisions for power-ups
-    count = this.powerups.length;
-    for (i = 0; i < count; i++) {
-        var powerup = this.powerups[i];
-        var remove = false;
-
-        if (powerup.y < -GameLayer.boundY
-            || powerup.y > GameLayer.boundY
-            || powerup.x < -GameLayer.boundX
-            || powerup.x > GameLayer.boundX) {
-            remove = true;
-        } else {
-            // Check collisions
-            if (this.player && this.checkPowerUpCollision(this.player, powerup)) {
-                // Apply the power-up
-                powerup.use();
-                remove = true;
-            }
-        }
-
-        if (remove) {
-            this.removePowerUp(powerup);
-            i--;
-            count--;
-        }
-    }
-
-    // Check for loss
-    if (this.player && this.player.health <= 0) {
-        // Add explosion
-        var template = this.player.explosionTemplate;
-        if (template) {
-            template.instantiate(this, this.player.x, this.player.y);
-        }
-
-        this.removeEntity(this.player);
-        this.player = null;
-
-        // Re-enable the cursor
-        this.cursor = 'auto';
-    }
-
-    // Add new enemies according to the level
-    if (this.level) {
-        this.level.update(ms);
+GameLayer.prototype.moveLeft = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingLeft(pressed);
     }
 };
 
-// TODO: Where should this code go?
-GameLayer.prototype.loadLevel1 = function (layer) {
-    var totalTime = 12000 * 20;
-    var waveDuration = 500;
-    time = 600 * 20;
-    var waves = [];
-
-    // Always add the same first wave
-    waves.push({
-        factory: Level.prototype.addStraightWave,
-        start: 1,
-        duration: time,
-        density: 0.4
-    });
-
-    // Now add random waves
-    while (time < totalTime - 1000 * 20) {
-        // Scale up the density as time goes on
-        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
-        var r = Math.random();
-
-        // Pick the type of wave
-        var factory;
-        if (r < 0.15) {
-            // 15% chance
-            factory = Level.prototype.addStraightArrowWave;
-        } else if (r < 0.25) {
-            // 10% chance
-            factory = Level.prototype.addOmniArrowWave;
-        } else if (r > 0.6) {
-            // 60% chance
-            factory = Level.prototype.addStraightWave;
-        } else {
-            // 15% chance
-            factory = Level.prototype.addOmniWave;
-        }
-
-        waves.push({
-            factory: factory,
-            start: time,
-            duration: waveDuration,
-            density: density
-        });
-
-        time += waveDuration;
-        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
-
-        // Put a little delay between waves
-        time += (50 + 50 * Math.random()) * 20;
+GameLayer.prototype.moveRight = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingRight(pressed);
     }
+};
 
-    // Ray gun starts half way through
-    waves.push({
-        factory: Level.prototype.addRayGunWave,
-        start: totalTime / 2,
-        duration: totalTime - 1000 * 20 - totalTime / 2
-    });
+GameLayer.prototype.moveUp = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingUp(pressed);
+    }
+};
 
-    // Boss
-    waves.push({
-        factory: Level.prototype.addBoss0Wave,
-        start: totalTime + 75 * 20,
-        duration: (1000 - 75) * 20
-    });
+GameLayer.prototype.moveDown = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setMovingDown(pressed);
+    }
+};
 
-
-    // Ammunition and power-ups
-    var level = new Level(this, waves);
-    level.addPowerUps(0, totalTime + 9000 * 20);
-
-    return level;
+GameLayer.prototype.fire = function (pressed) {
+    if (this.master.player) {
+        this.master.player.setFiring(pressed);
+    }
 };
 
 function ProgressBar(x, y, width, height, color) {
@@ -1864,6 +2033,7 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/rayGunShot.png',
         'images/rayGunShotExplosion.png',
         'images/shieldBar.png',
+        'images/sparkle.png',
         'images/statBackground.png',
         'images/statTop.png',
         'images/straight.png',
@@ -1873,6 +2043,14 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/tankShot.png',
         'images/tankShotExplosion.png',
         'images/tankShotFlash.png',
+    ]);
+
+    // TODO: Consider preloading sounds (in addition to images)
+    AudioManager.load([
+        'explosion.mp3',
+        'explosionBig.mp3',
+        'explosionHuge.mp3',
+        'powerup.mp3',
     ]);
 
     Radius.start(new LoadingLayer(loadPromise, function () {

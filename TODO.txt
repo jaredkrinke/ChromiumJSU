@@ -1,21 +1,15 @@
-﻿Bugs:
-Enemies appear above UI
-
-For alpha 3:
-Sound
-Add keyboard controls?
-Super shield sparkles
-Add "don't let enemies through" logic/text?
-
-For beta 1:
+﻿For beta 1:
 Add menus
 Complete more levels
 Pause button?
 Add lives
-Handle loading errors
+Add super bombs
+Add "don't let enemies through" logic/text?
+Add end game message
 
 For final:
-Add touch controls
+Handle loading errors
+Add scoring?
 
 Consider:
 Enemy ammo could "sparkle" by flipping sign on width/height randomly (the original does this)

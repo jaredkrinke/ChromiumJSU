@@ -285,6 +285,7 @@ var keyCodeToName = {
     38: 'up',
     39: 'right',
     40: 'down',
+    90: 'z'
 };
 
 // Layer that contains entities to display/update
@@ -453,10 +454,9 @@ Layer.prototype = {
 
             // Draw children
             if (entity.children) {
-                var childCount = entity.children.length;
-                for (var i = 0; i < childCount; i++) {
-                    Layer.prototype.drawEntity(canvas, context, entity.children[i]);
-                }
+                entity.forEachChild(function (child) {
+                    Layer.prototype.drawEntity(canvas, context, child);
+                });
             }
 
             context.restore();
@@ -544,35 +544,45 @@ function Entity(x, y, width, height) {
 Entity.prototype = {
     constructor: Entity,
 
+    addChild: function (child) {
+        if (!this.children) {
+            this.children = new LockingList();
+        }
+
+        this.children.append(child);
+    },
+
+    addChildren: function (children) {
+        var count = children.length;
+        for (var i = 0; i < count; i++) {
+            this.addChild(children[i]);
+        }
+    },
+
     removeChild: function (child) {
         if (this.children) {
-            var childCount = this.children.length;
-            for (var i = 0; i < childCount; i++) {
-                if (child === this.children[i]) {
-                    this.children.splice(i, 1);
-                }
-            }
+            this.children.remove(child);
+        }
+    },
+
+    forEachChild: function (f, that) {
+        if (this.children) {
+            this.children.forEach(f, that);
         }
     },
 
     updateChildren: function (ms) {
         if (this.children) {
-            var childCount = this.children.length;
-            for (var i = 0; i < childCount; i++) {
-                var child = this.children[i];
+            this.children.forEach(function (child) {
                 if (child.update) {
                     child.update(ms);
                 }
 
                 // Check to see if this child should be removed
                 if (child.dead) {
-                    this.removeChild(child);
-
-                    // Update loop variables to account for the removed child
-                    childCount--;
-                    i--;
+                    this.children.remove(child);
                 }
-            }
+            }, this);
         }
     },
 
