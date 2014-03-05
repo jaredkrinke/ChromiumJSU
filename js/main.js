@@ -1,7 +1,7 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
-function Burst(image, x, y, width1, height1, width2, height2, duration, delay) {
+function Burst(image, x, y, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     Entity.call(this, x, y, width1, height1);
     this.duration = duration;
     this.width1 = width1;
@@ -9,6 +9,9 @@ function Burst(image, x, y, width1, height1, width2, height2, duration, delay) {
     this.width2 = width2;
     this.height2 = height2;
     this.timer = delay ? -delay : 0;
+    this.vx = vx || 0;
+    this.vy = vy || 0;
+    this.maxOpacity = maxOpacity || 1;
     this.elements = [image];
 
     // Make sure opacity gets set initially
@@ -24,7 +27,11 @@ Burst.prototype.update = function (ms) {
         var t = Math.min(1, (this.timer + 100) / (this.duration + 100));
         this.width = this.width1 + (this.width2 - this.width1) * t;
         this.height = this.height1 + (this.height2 - this.height1) * t;
-        this.opacity = Math.min(1, 1.2 - this.timer / this.duration);
+        this.opacity = this.maxOpacity * Math.min(1, 1.2 - this.timer / this.duration);
+
+        // Update position
+        this.x += this.vx * ms;
+        this.y += this.vy * ms;
 
         // Flag for removal if done
         if (this.timer > this.duration) {
@@ -35,7 +42,7 @@ Burst.prototype.update = function (ms) {
     }
 };
 
-function BurstTemplate(image, width1, height1, width2, height2, duration, delay) {
+function BurstTemplate(image, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     this.image = image;
     this.width1 = width1;
     this.height1 = height1;
@@ -43,10 +50,13 @@ function BurstTemplate(image, width1, height1, width2, height2, duration, delay)
     this.height2 = height2;
     this.duration = duration;
     this.delay = delay;
+    this.vx = vx;
+    this.vy = vy;
+    this.maxOpacity = maxOpacity;
 }
 
 BurstTemplate.prototype.instantiate = function (parent, x, y) {
-    parent.addChild(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay));
+    parent.addChild(new Burst(this.image, x, y, this.width1, this.height1, this.width2, this.height2, this.duration, this.delay, this.vx, this.vy, this.maxOpacity));
 };
 
 function PowerUp(image, shadowImage, use, master, x, y) {
@@ -462,9 +472,13 @@ function PlayerSuperShields(player) {
     this.player = player;
     this.elements = [PlayerSuperShields.image];
     this.opacity = 0;
+    this.timer = 0;
+    this.sparkleTemplate = new BurstTemplate(PlayerSuperShields.sparkleImage, 22, 22, 22, 22, 20 * 20, 0, 0, -0.2);
 }
 
 PlayerSuperShields.maxOpacity = 0.9;
+PlayerSuperShields.sparklePeriod = 40;
+PlayerSuperShields.sparkleImage = new Image('images/sparkle.png', 'yellow');
 PlayerSuperShields.image = new Image('images/playerSuperShields.png', 'blue', -PlayerShields.shieldWidth / 2, PlayerShields.shieldHeight / 2, PlayerShields.shieldWidth, PlayerShields.shieldHeight);
 PlayerSuperShields.prototype = Object.create(Entity.prototype);
 
@@ -472,11 +486,25 @@ PlayerSuperShields.prototype.update = function (ms) {
     this.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
     if (this.opacity > 0) {
         this.angle = 2 * Math.PI * Math.random();
+
+        // Add sparkles
+        this.timer += ms;
+        while (this.timer >= PlayerSuperShields.sparklePeriod) {
+            var angle = Math.random() * 2 * Math.PI;
+            var distance = PlayerShields.shieldWidth / 2;
+            var x = this.player.x + distance * Math.cos(angle);
+            var y = this.player.y + distance * Math.sin(angle);
+            this.sparkleTemplate.maxOpacity = this.opacity;
+            this.sparkleTemplate.instantiate(this.player.master.effects, x, y);
+            this.timer -= PlayerSuperShields.sparklePeriod;
+        }
+    } else {
+        this.timer = 0;
     }
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, 1/*Player.maxHealth*/, 100,
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100,
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(PowerUp.shadow2Image, 64, 64, 1000)],
@@ -2005,6 +2033,7 @@ window.addEventListener('DOMContentLoaded', function () {
         'images/rayGunShot.png',
         'images/rayGunShotExplosion.png',
         'images/shieldBar.png',
+        'images/sparkle.png',
         'images/statBackground.png',
         'images/statTop.png',
         'images/straight.png',
