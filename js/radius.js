@@ -38,6 +38,10 @@ LockingList.prototype.remove = function (item) {
     }
 };
 
+LockingList.prototype.getCount = function () {
+    return this.items.length;
+};
+
 LockingList.prototype.lock = function () {
     this.locked = true;
 };
@@ -584,6 +588,13 @@ Entity.prototype = {
                 }
             }, this);
         }
+    },
+
+    getChildCount: function () {
+        if (this.children) {
+            return this.children.getCount();
+        }
+        return 0;
     },
 
     update: function (ms) {

@@ -1205,12 +1205,30 @@ function Level(master, waves) {
     this.master = master;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
+    this.endTime = 0;
     var count = waves.length;
     for (var i = 0; i < count; i++) {
         var wave = waves[i];
         wave.factory.call(this, wave.start, wave.duration, wave.density);
     }
 }
+
+Level.prototype.addAction = function (action, isEnemy) {
+    this.queue.insert(action);
+
+    // Keep track of the last enemy (plus a little bit of buffer)
+    if (isEnemy) {
+        this.endTime = Math.max(this.endTime, action.time + 1000);
+    }
+};
+
+Level.prototype.addEnemy = function (enemy) {
+    this.addAction(enemy, true);
+};
+
+Level.prototype.addPowerUp = function (powerup) {
+    this.addAction(powerup, false);
+};
 
 Level.prototype.addStraightWave = function (start, duration, density) {
     // TODO: Scale xRand?
@@ -1304,7 +1322,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
                 break;
         }
 
-        this.queue.insert(new LevelAction(factory, t, x, waveY));
+        this.addEnemy(new LevelAction(factory, t, x, waveY));
         t += frequency + fJitter * (Math.random() * 2 - 1);
     }
 };
@@ -1320,7 +1338,7 @@ Level.prototype.addPowerUps = function (start, duration, firsts) {
         // Loop through and add the power-up
         var t = start + firsts[j] + randomModifiers[j] * Math.random();
         while (t < start + duration) {
-            this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
+            this.addPowerUp(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
             t += frequencies[j] + (Math.random() - 0.5) * randomModifiers[j] * 2;
         }
     }
@@ -1339,6 +1357,11 @@ Level.prototype.update = function (ms) {
             this.master.addPowerUp(item);
         }
     }
+
+    // Check to see if the level is complete (i.e. all enemies have been added)
+    if (!this.complete && this.timer > this.endTime) {
+        this.complete = true;
+    }
 };
 
 function Master(layer) {
@@ -1350,6 +1373,7 @@ function Master(layer) {
     this.healthCollected = new Event();
     this.shieldsCollected = new Event();
     this.lost = new Event();
+    this.won = new Event();
 
     // Background
     this.addChild(new Ground(GroundTemplates.metalHighlight));
@@ -1385,6 +1409,7 @@ Master.prototype.reset = function () {
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
+    this.levelComplete = false;
 
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
@@ -1392,7 +1417,7 @@ Master.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
@@ -1700,6 +1725,14 @@ Master.prototype.updateGame = function (ms) {
     // Add new enemies according to the level
     if (this.level) {
         this.level.update(ms);
+
+        // Check for end of level (no enemies queued, no enemies or enemy shots on the screen)
+        if (!this.levelCompleted && this.level.complete && this.enemies.getChildCount() === 0 && this.enemyShots.getChildCount() === 0) {
+            this.levelCompleted = true;
+
+            // Signal the win
+            this.won.fire();
+        }
     }
 };
 
@@ -1830,7 +1863,10 @@ function Display(master) {
         display.healthBlink.blink();
     });
 
-    // Game over message
+    // End messages
+    master.won.addListener(function () {
+        master.addOverlay(new Message('y o u   w i n'));
+    });
     master.lost.addListener(function () {
         master.addOverlay(new Message('g a m e   o v e r'));
     });

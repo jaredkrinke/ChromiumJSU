@@ -1,6 +1,5 @@
 ﻿For beta 1:
 Add menus
-Add level complete message
 Add super bombs? (How would touch control work?)
 
 For beta 2:
