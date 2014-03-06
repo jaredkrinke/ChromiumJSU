@@ -1,6 +1,24 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+function Message(text) {
+    Entity.call(this);
+    this.timer = 0;
+    this.opacity = 0;
+    this.elements = [new Text(text, Message.font, 0, 0, 'center')];
+}
+
+Message.prototype = Object.create(Entity.prototype);
+Message.font = '48px sans-serif';
+Message.fadeInPeriod = 3000;
+
+Message.prototype.update = function (ms) {
+    if (this.timer < Message.fadeInPeriod) {
+        this.timer += ms;
+        this.opacity = Math.min(1, this.timer / Message.fadeInPeriod);
+    }
+};
+
 function Burst(image, x, y, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     Entity.call(this, x, y, width1, height1);
     this.duration = duration;
@@ -1331,6 +1349,7 @@ function Master(layer) {
     this.ammoCollected = new Event();
     this.healthCollected = new Event();
     this.shieldsCollected = new Event();
+    this.lost = new Event();
 
     // Background
     this.addChild(new Ground(GroundTemplates.metalHighlight));
@@ -1350,6 +1369,9 @@ function Master(layer) {
 
     // Special effects
     this.addChild(this.effects = new Entity());
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
 }
 
 Master.prototype = Object.create(Entity.prototype);
@@ -1408,6 +1430,10 @@ Master.prototype.addPowerUp = function (powerup) {
 
 Master.prototype.removePowerUp = function (powerup) {
     this.powerups.removeChild(powerup);
+};
+
+Master.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
 };
 
 Master.prototype.checkShotCollision = function (shot, b) {
@@ -1666,6 +1692,9 @@ Master.prototype.updateGame = function (ms) {
 
         // Re-enable the cursor
         this.layer.cursor = 'auto';
+
+        // Signal the loss
+        this.lost.fire();
     }
 
     // Add new enemies according to the level
@@ -1799,6 +1828,11 @@ function Display(master) {
     this.healthBlink = new Blink(320, -240, 240, 480);
     player.healthLost.addListener(function () {
         display.healthBlink.blink();
+    });
+
+    // Game over message
+    master.lost.addListener(function () {
+        master.addOverlay(new Message('g a m e   o v e r'));
     });
 
     this.addChild(this.electricityLeft);
