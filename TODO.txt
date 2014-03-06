@@ -4,6 +4,7 @@ Add super bombs? (How would touch control work?)
 
 For beta 2:
 Complete more levels
+Add level transitions
 Add "don't let enemies through" logic/text?
 Pause button?
 Auto-pause of some sort?
@@ -11,5 +12,6 @@ Add lives?
 Any other power-ups?
 
 For release candidate:
+Polish the menus more
 Handle loading errors
 Add scoring?
