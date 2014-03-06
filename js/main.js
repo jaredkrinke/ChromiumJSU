@@ -1970,9 +1970,6 @@ function GameLayer() {
     this.addEntity(this.master);
     this.addEntity(this.display);
 
-    // TODO: This should also reset the display (and anything in the layer, if necessary)
-    this.master.reset();
-
     // Keyboard controls
     this.keyPressedHandlers = {
         up: GameLayer.prototype.moveUp,
@@ -1985,6 +1982,15 @@ function GameLayer() {
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
+
+GameLayer.prototype.reset = function () {
+    // TODO: This should also reset the display (and anything in the layer, if necessary)
+    this.master.reset();
+};
+
+GameLayer.prototype.start = function () {
+    Radius.pushLayer(this);
+};
 
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
@@ -2059,6 +2065,49 @@ function LoadingLayer(loadPromise, start) {
 
 LoadingLayer.prototype = Object.create(Layer.prototype);
 
+function MainMenu() {
+    this.gameLayer = new GameLayer();
+
+    // Add mandatory options
+    var mainMenu = this;
+    var audioOptions = ['On', 'Muted'];
+    var audioChoice = new Choice('Audio', audioOptions, Audio.muted ? 1 : 0);
+    audioChoice.choiceChanged.addListener(function (text) {
+        Audio.setMuted(text === audioOptions[1]);
+    });
+
+    var options = [
+        new Separator(),
+        new Button('Start New Game', function () { mainMenu.startNewGame(); }),
+        new Separator(),
+        audioChoice,
+    ];
+
+    // Add the "fullscreen" choice, if necessary
+    var fullscreenOnly = RadiusSettings && RadiusSettings.fullscreenOnly;
+    if (!fullscreenOnly) {
+        var fullscreenOptions = ['Off', 'On'];
+        var fullscreenChoice = new Choice('Fullscreen', fullscreenOptions);
+        fullscreenChoice.choiceChanged.addListener(function (text) {
+            Radius.setFullscreen(text === fullscreenOptions[1]);
+        });
+        options.splice(4, 0, fullscreenChoice);
+    }
+
+    // Create the form
+    FormLayer.call(this, new NestedGridForm(1, [
+        new Title('Chromium JSU'),
+        new NestedFlowForm(1, options)
+    ]));
+}
+
+MainMenu.prototype = Object.create(FormLayer.prototype);
+
+MainMenu.prototype.startNewGame = function () {
+    this.gameLayer.reset();
+    this.gameLayer.start();
+};
+
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
 
@@ -2116,6 +2165,7 @@ window.addEventListener('DOMContentLoaded', function () {
     ]);
 
     // TODO: Consider preloading sounds (in addition to images)
+    // TODO: Don't load audio clips if we're already muted
     AudioManager.load([
         'explosion.mp3',
         'explosionBig.mp3',
@@ -2124,6 +2174,6 @@ window.addEventListener('DOMContentLoaded', function () {
     ]);
 
     Radius.start(new LoadingLayer(loadPromise, function () {
-        Radius.pushLayer(new GameLayer());
+        Radius.pushLayer(new MainMenu());
     }));
 });

@@ -1,5 +1,8 @@
 ﻿For beta 1:
-Add menus
+Make it possible to get back to the main menu after starting a game
+Load in the background while menu is shown
+Don't pre-load audio if muted
+Make it so the loading/menu screen don't constantly redraw
 Add super bombs? (How would touch control work?)
 
 For beta 2:
@@ -10,6 +13,7 @@ Pause button?
 Auto-pause of some sort?
 Add lives?
 Any other power-ups?
+Different difficulty levels?
 
 For release candidate:
 Polish the menus more
