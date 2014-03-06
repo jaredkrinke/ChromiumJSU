@@ -1,5 +1,4 @@
 ﻿For beta 1:
-Make it possible to get back to the main menu after starting a game
 Polish the menus more (e.g. scroll background images)
 Make the transition from menu to game somewhat seamless
 Load in the background while menu is shown

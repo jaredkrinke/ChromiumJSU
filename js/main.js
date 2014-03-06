@@ -1,6 +1,23 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+function Timer(period, f) {
+    Entity.call(this);
+    this.period = period;
+    this.f = f;
+    this.timer = 0;
+}
+
+Timer.prototype = Object.create(Entity.prototype);
+
+Timer.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= this.period) {
+        this.dead = true;
+        this.f.call();
+    }
+};
+
 function Message(text) {
     Entity.call(this);
     this.timer = 0;
@@ -1410,6 +1427,7 @@ Master.prototype.reset = function () {
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
     this.levelComplete = false;
+    this.done = false;
 
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
@@ -1720,6 +1738,12 @@ Master.prototype.updateGame = function (ms) {
 
         // Signal the loss
         this.lost.fire();
+
+        // Set up a timer for exiting the game
+        var master = this;
+        this.effects.addChild(new Timer(3000, function () {
+            master.done = true;
+        }));
     }
 
     // Add new enemies according to the level
@@ -1992,6 +2016,25 @@ GameLayer.prototype.start = function () {
     Radius.pushLayer(this);
 };
 
+GameLayer.prototype.stop = function () {
+    Radius.popLayer();
+};
+
+GameLayer.prototype.keyPressed = function (key, pressed) {
+    if (this.master.done) {
+        // Game is over, so exit on any key press
+        if (pressed) {
+            this.stop();
+        }
+    } else {
+        // In game
+        var keyPressedHandler = this.keyPressedHandlers[key];
+        if (keyPressedHandler) {
+            keyPressedHandler.call(this, pressed);
+        }
+    }
+};
+
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
     this.master.playerCursor.setPosition(x, y);
@@ -1999,8 +2042,16 @@ GameLayer.prototype.mouseMoved = function (x, y) {
 
 // TODO: It would be nice to have shooting work while the mouse is outside the canvas...
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
-    if (button === MouseButton.primary && this.master.player) {
-        this.master.player.setFiring(pressed);
+    if (this.master.done) {
+        // Game is over; exit on any press
+        if (pressed) {
+            this.stop();
+        }
+    } else {
+        // In game
+        if (button === MouseButton.primary && this.master.player) {
+            this.master.player.setFiring(pressed);
+        }
     }
 };
 
