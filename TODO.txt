@@ -1,7 +1,4 @@
-﻿Bugs:
-Ammo flashes when starting a second game
-
-For beta 1:
+﻿For beta 1:
 Don't pre-load audio if muted
 After the player loses, enemies (esp. the boss) shouldn't continue to appear
 Add super bombs? (How would touch control work?)

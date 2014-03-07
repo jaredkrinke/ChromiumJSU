@@ -1788,13 +1788,17 @@ function Electricity(x, y, width, height) {
         this.elements.push(new ImageRegion(Electricity.imageSrc, 'blue', 0, 0, 1, 0.5, 0, height / 2, width, height / 2));
     }
 
-    this.timer = Electricity.period;
-    this.update(0);
+    this.reset();
 }
 
 Electricity.imageSrc = 'images/electricity.png'
 Electricity.period = 400;
 Electricity.prototype = Object.create(Entity.prototype);
+
+Electricity.prototype.reset = function () {
+    this.timer = Electricity.period;
+    this.update(0);
+};
 
 Electricity.prototype.update = function (ms) {
     this.timer += ms;
@@ -1831,9 +1835,8 @@ Electricity.prototype.flash = function () {
 
 function Blink(x, y, width, height) {
     Entity.call(this, x, y, width, height);
-    this.opacity = 0;
-    this.timer = Blink.duration;
     this.elements = [Blink.image];
+    this.reset();
 }
 
 Blink.duration = 600;
@@ -1841,6 +1844,11 @@ Blink.period = 150;
 Blink.opacity = 0.5;
 Blink.image = new Image('images/blink.png', 'red');
 Blink.prototype = Object.create(Entity.prototype);
+
+Blink.prototype.reset = function () {
+    this.opacity = 0;
+    this.timer = Blink.duration;
+};
 
 Blink.prototype.update = function (ms) {
     if (this.timer >= Blink.duration) {
@@ -1979,6 +1987,14 @@ Display.prototype.update = function (ms) {
     this.updateChildren(ms);
 };
 
+Display.prototype.reset = function () {
+    this.blinkTimer = 0;
+    this.electricityLeft.reset();
+    this.electricityRight.reset();
+    this.healthBlink.reset();
+    this.update(0);
+};
+
 function Cursor(master) {
     Entity.call(this, 0, 0, Cursor.size, Cursor.size);
     this.master = master;
@@ -2028,8 +2044,8 @@ function GameLayer() {
 GameLayer.prototype = Object.create(Layer.prototype);
 
 GameLayer.prototype.reset = function () {
-    // TODO: This should also reset the display (and anything in the layer, if necessary)
     this.master.reset();
+    this.display.reset();
 };
 
 GameLayer.prototype.start = function () {
