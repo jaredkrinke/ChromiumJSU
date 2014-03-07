@@ -555,10 +555,6 @@ function Player(master) {
     this.elements = [Player.image, Player.exhaustImage];
 
     // Movement
-    this.cursorX = 0;
-    this.cursorY = -Player.boundY;
-    this.targetX = this.cursorX;
-    this.targetY = this.cursorY;
     this.movingLeft = false;
     this.movingRight = false;
     this.movingUp = false;
@@ -641,6 +637,14 @@ Player.prototype.reset = function () {
     for (var i = 0; i < count; i++) {
         this.ammo[i] = 0;
     }
+
+    // Reset position
+    this.cursorX = 0;
+    this.cursorY = -Player.boundY;
+    this.targetX = this.cursorX;
+    this.targetY = this.cursorY;
+    this.offsetX = 0;
+    this.offsetY = 0;
 
     // Reset guns
     count = this.guns.length;
@@ -1766,8 +1770,8 @@ Master.prototype.updateGame = function (ms) {
         }));
     }
 
-    // Add new enemies according to the level
-    if (this.level) {
+    // Add new enemies according to the level (assuming the player is still alive)
+    if (this.player && this.level) {
         this.level.update(ms);
 
         // Check for end of level (no enemies queued, no enemies or enemy shots on the screen)
@@ -1978,6 +1982,10 @@ Display.prototype.update = function (ms) {
         this.shieldBar.y = Display.barBaseY + height;
         this.superShieldBar.y = this.shieldBar.y;
         this.superShieldBar.opacity = Math.max(0, (player.shields - Player.maxShields) / Player.maxShields);
+    } else {
+        this.healthBar.height = 0;
+        this.shieldBar.height = 0;
+        this.superShieldBar.opacity = 0;
     }
 
     if (this.ammoBackground.opacity > Display.defaultOpacity) {
