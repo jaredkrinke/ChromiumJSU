@@ -1393,8 +1393,9 @@ function Master(layer) {
     this.won = new Event();
 
     // Background
-    this.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.addChild(new Ground(GroundTemplates.metal));
+    this.addChild(this.background = new Entity());
+    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.background.addChild(new Ground(GroundTemplates.metal));
 
     // Player (and cursor)
     this.addChild(this.playerCursor = new Cursor(this));
@@ -2145,11 +2146,21 @@ function MainMenu() {
         options.splice(4, 0, fullscreenChoice);
     }
 
+    // Setup background
+    var background = new Entity();
+    var overlay = new Entity(0, 0, 640, 480);
+    var box = new Rectangle();
+    box.color = 'black';
+    box.opacity = 0.5;
+    overlay.elements = [box];
+    background.addChild(this.gameLayer.master.background);
+    background.addChild(overlay);
+
     // Create the form
     FormLayer.call(this, new NestedGridForm(1, [
         new Title('Chromium JSU'),
         new NestedFlowForm(1, options)
-    ]));
+    ]), background);
 }
 
 MainMenu.prototype = Object.create(FormLayer.prototype);
@@ -2158,6 +2169,9 @@ MainMenu.prototype.startNewGame = function () {
     this.gameLayer.reset();
     this.gameLayer.start();
 };
+
+// Set button color
+Button.focusedColor = 'red';
 
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
