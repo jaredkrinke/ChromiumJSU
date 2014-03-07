@@ -1,8 +1,6 @@
 ﻿For beta 1:
-Add background to loading layer
 Fix the game layer reset logic
 Don't pre-load audio if muted
-Make it so the loading/menu screen don't constantly redraw?
 After the player loses, enemies (esp. the boss) shouldn't continue to appear
 Add super bombs? (How would touch control work?)
 

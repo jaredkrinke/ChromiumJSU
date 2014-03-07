@@ -2105,10 +2105,13 @@ ProgressBar.prototype.setProgress = function (progress) {
     this.bar.width = progress;
 };
 
-function LoadingLayer() {
+function LoadingLayer(background) {
     Layer.call(this);
-    // TODO: This layer doesn't need to be constantly redrawn
+    // TODO: This layer may not need to be constantly redrawn
     this.bar = new ProgressBar(0, 0, 640, 100, 'gray');
+    if (background) {
+        this.addEntity(background);
+    }
     this.addEntity(this.bar);
 }
 
@@ -2163,6 +2166,7 @@ function MainMenu(loadPromise) {
     overlay.elements = [box];
     background.addChild(this.gameLayer.master.background);
     background.addChild(overlay);
+    this.background = background;
 
     // Create the form
     FormLayer.call(this, new NestedGridForm(1, [
@@ -2186,7 +2190,7 @@ MainMenu.prototype.startNewGame = function () {
         // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
         // TODO: Show the background here as well
         var mainMenu = this;
-        var loadingLayer = new LoadingLayer();
+        var loadingLayer = new LoadingLayer(this.background);
         Radius.pushLayer(loadingLayer);
         loadingLayer.load(this.loadPromise, function () {
             mainMenu.ready = true;
