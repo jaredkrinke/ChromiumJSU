@@ -2105,20 +2105,28 @@ ProgressBar.prototype.setProgress = function (progress) {
     this.bar.width = progress;
 };
 
-function LoadingLayer(loadPromise, start) {
+function LoadingLayer() {
     Layer.call(this);
     // TODO: This layer doesn't need to be constantly redrawn
-    var bar = new ProgressBar(0, 0, 640, 100, 'gray');
-    this.addEntity(bar);
-    loadPromise.then(start, null, function (progress) {
-        bar.setProgress(progress);
-    });
+    this.bar = new ProgressBar(0, 0, 640, 100, 'gray');
+    this.addEntity(this.bar);
 }
 
 LoadingLayer.prototype = Object.create(Layer.prototype);
 
-function MainMenu() {
+LoadingLayer.prototype.load = function (loadPromise, start) {
+    var loadingLayer = this;
+    loadPromise.then(start, null, function (progress) {
+        loadingLayer.bar.setProgress(progress);
+    });
+};
+
+function MainMenu(loadPromise) {
     this.gameLayer = new GameLayer();
+
+    // Setup loading
+    this.loadPromise = loadPromise;
+    this.ready = false;
 
     // Add mandatory options
     var mainMenu = this;
@@ -2165,9 +2173,27 @@ function MainMenu() {
 
 MainMenu.prototype = Object.create(FormLayer.prototype);
 
-MainMenu.prototype.startNewGame = function () {
+MainMenu.prototype.startNewGameInternal = function () {
     this.gameLayer.reset();
     this.gameLayer.start();
+};
+
+MainMenu.prototype.startNewGame = function () {
+    if (this.ready) {
+        // Everything's loaded, so just go
+        this.startNewGameInternal();
+    } else {
+        // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
+        // TODO: Show the background here as well
+        var mainMenu = this;
+        var loadingLayer = new LoadingLayer();
+        Radius.pushLayer(loadingLayer);
+        loadingLayer.load(this.loadPromise, function () {
+            mainMenu.ready = true;
+            Radius.popLayer();
+            mainMenu.startNewGameInternal();
+        });
+    }
 };
 
 // Set button color
@@ -2176,69 +2202,78 @@ Button.focusedColor = 'red';
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
 
-    // Pre-load images
-    var loadPromise = Radius.images.load([
-        'images/ammoBar0.png',
-        'images/ammoBar1.png',
-        'images/ammoBar2.png',
-        'images/blink.png',
-        'images/boss0.png',
-        'images/bullet.png',
-        'images/bulletExplosion.png',
-        'images/bulletFlash.png',
-        'images/electricity.png',
-        'images/emp.png',
-        'images/empExplosion.png',
-        'images/empFlash.png',
-        'images/enemyExplosion.png',
+    // These images must be loaded to show the menu, so load them first
+    var menuLoadPromise = Radius.images.load([
         'images/groundMetal.png',
         'images/groundMetalHighlight.png',
-        'images/healthBar.png',
-        'images/omni.png',
-        'images/omniExplosion.png',
-        'images/omniShot.png',
-        'images/omniShotExplosion.png',
-        'images/omniSpinner.png',
-        'images/plasma.png',
-        'images/plasmaExplosion.png',
-        'images/plasmaFlash.png',
-        'images/player.png',
-        'images/playerShields.png',
-        'images/playerSuperShields.png',
-        'images/powerupAmmo.png',
-        'images/powerupShadow0.png',
-        'images/powerupShadow1.png',
-        'images/powerupShadow2.png',
-        'images/powerupShadow3.png',
-        'images/powerupShadow4.png',
-        'images/powerupShadow5.png',
-        'images/powerupShield.png',
-        'images/rayGun.png',
-        'images/rayGunShot.png',
-        'images/rayGunShotExplosion.png',
-        'images/shieldBar.png',
-        'images/sparkle.png',
-        'images/statBackground.png',
-        'images/statTop.png',
-        'images/straight.png',
-        'images/straightShot.png',
-        'images/straightShotExplosion.png',
-        'images/superShieldBar.png',
-        'images/tankShot.png',
-        'images/tankShotExplosion.png',
-        'images/tankShotFlash.png',
     ]);
 
-    // TODO: Consider preloading sounds (in addition to images)
-    // TODO: Don't load audio clips if we're already muted
-    AudioManager.load([
-        'explosion.mp3',
-        'explosionBig.mp3',
-        'explosionHuge.mp3',
-        'powerup.mp3',
-    ]);
+    // Show the main menu once critical images have loaded
+    var loadingLayer = new LoadingLayer();
+    Radius.start(loadingLayer);
+    loadingLayer.load(menuLoadPromise, function () {
+        // Now start loading everything else
+        var loadPromise = Radius.images.load([
+            'images/ammoBar0.png',
+            'images/ammoBar1.png',
+            'images/ammoBar2.png',
+            'images/blink.png',
+            'images/boss0.png',
+            'images/bullet.png',
+            'images/bulletExplosion.png',
+            'images/bulletFlash.png',
+            'images/electricity.png',
+            'images/emp.png',
+            'images/empExplosion.png',
+            'images/empFlash.png',
+            'images/enemyExplosion.png',
+            'images/healthBar.png',
+            'images/omni.png',
+            'images/omniExplosion.png',
+            'images/omniShot.png',
+            'images/omniShotExplosion.png',
+            'images/omniSpinner.png',
+            'images/plasma.png',
+            'images/plasmaExplosion.png',
+            'images/plasmaFlash.png',
+            'images/player.png',
+            'images/playerShields.png',
+            'images/playerSuperShields.png',
+            'images/powerupAmmo.png',
+            'images/powerupShadow0.png',
+            'images/powerupShadow1.png',
+            'images/powerupShadow2.png',
+            'images/powerupShadow3.png',
+            'images/powerupShadow4.png',
+            'images/powerupShadow5.png',
+            'images/powerupShield.png',
+            'images/rayGun.png',
+            'images/rayGunShot.png',
+            'images/rayGunShotExplosion.png',
+            'images/shieldBar.png',
+            'images/sparkle.png',
+            'images/statBackground.png',
+            'images/statTop.png',
+            'images/straight.png',
+            'images/straightShot.png',
+            'images/straightShotExplosion.png',
+            'images/superShieldBar.png',
+            'images/tankShot.png',
+            'images/tankShotExplosion.png',
+            'images/tankShotFlash.png',
+        ]);
 
-    Radius.start(new LoadingLayer(loadPromise, function () {
-        Radius.pushLayer(new MainMenu());
-    }));
+        // TODO: Consider preloading sounds (in addition to images)
+        // TODO: Don't load audio clips if we're already muted
+        AudioManager.load([
+            'explosion.mp3',
+            'explosionBig.mp3',
+            'explosionHuge.mp3',
+            'powerup.mp3',
+        ]);
+
+        // Show the main menu
+        Radius.popLayer();
+        Radius.pushLayer(new MainMenu(loadPromise));
+    });
 });
