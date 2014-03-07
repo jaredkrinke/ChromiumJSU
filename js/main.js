@@ -1743,6 +1743,7 @@ Master.prototype.updateGame = function (ms) {
     }, this);
 
     // Check for loss
+    var wonOrLost = false;
     if (this.player && this.player.health <= 0) {
         // TODO: Shouldn't this be consolidated into a method on Ship so enemies don't duplicate the code?
         // Sound effect
@@ -1762,12 +1763,7 @@ Master.prototype.updateGame = function (ms) {
 
         // Signal the loss
         this.lost.fire();
-
-        // Set up a timer for exiting the game
-        var master = this;
-        this.effects.addChild(new Timer(3000, function () {
-            master.done = true;
-        }));
+        wonOrLost = true;
     }
 
     // Add new enemies according to the level (assuming the player is still alive)
@@ -1780,7 +1776,16 @@ Master.prototype.updateGame = function (ms) {
 
             // Signal the win
             this.won.fire();
+            wonOrLost = true;
         }
+    }
+
+    // Set a timer to exit the game (if the player won or lost)
+    if (wonOrLost) {
+        var master = this;
+        this.effects.addChild(new Timer(3000, function () {
+            master.done = true;
+        }));
     }
 };
 
