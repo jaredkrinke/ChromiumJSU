@@ -2302,8 +2302,8 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/tankShotFlash.png',
         ]);
 
+        // Create audio clips (note: if muted, these won't actually be loaded)
         // TODO: Consider preloading sounds (in addition to images)
-        // TODO: Don't load audio clips if we're already muted
         AudioManager.load([
             'explosion.mp3',
             'explosionBig.mp3',
