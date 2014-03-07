@@ -7,7 +7,8 @@
 
 LockingList.action = {
     append: 0,
-    remove: 1
+    remove: 1,
+    clear: 2
 };
 
 // TODO: Consider making the internal versions hidden
@@ -60,6 +61,10 @@ LockingList.prototype.unlock = function () {
                 case LockingList.action.remove:
                     this.removeInternal(action.item);
                     break;
+
+                case LockingList.action.clear:
+                    this.clearInternal();
+                    break;
             }
         }
         this.pendingActions.length = 0;
@@ -75,6 +80,18 @@ LockingList.prototype.forEach = function (callback, that) {
         callback.call(that, this.items[i]);
     }
     this.unlock();
+};
+
+LockingList.prototype.clearInternal = function () {
+    this.items.length = 0;
+}
+
+LockingList.prototype.clear = function () {
+    if (this.locked) {
+        this.pendingActions.push({ type: LockingList.action.clear });
+    } else {
+        this.clearInternal();
+    }
 };
 
 function Event() {
@@ -566,6 +583,12 @@ Entity.prototype = {
     removeChild: function (child) {
         if (this.children) {
             this.children.remove(child);
+        }
+    },
+
+    clearChildren: function () {
+        if (this.children) {
+            this.children.clear();
         }
     },
 

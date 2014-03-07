@@ -539,7 +539,7 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100,
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, 0, 100,
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(PowerUp.shadow2Image, 64, 64, 1000)],
@@ -552,7 +552,6 @@ function Player(master) {
 
     this.shieldImage = new PlayerShields();
     this.superShieldImage = new PlayerSuperShields(this);
-    this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
     // Movement
@@ -635,8 +634,17 @@ Player.boundX = 284;
 Player.boundY = 213;
 
 Player.prototype.reset = function () {
-    var count = this.guns.length;
+    // Set starting health, shields, and ammo
+    this.health = Player.maxHealth;
+    this.shields = 0;
+    var count = this.ammo.length;
     for (var i = 0; i < count; i++) {
+        this.ammo[i] = 0;
+    }
+
+    // Reset guns
+    count = this.guns.length;
+    for (i = 0; i < count; i++) {
         this.guns[i].reset();
     }
 };
@@ -1398,8 +1406,9 @@ function Master(layer) {
     this.background.addChild(new Ground(GroundTemplates.metal));
 
     // Player (and cursor)
+    this.playerInternal = new Player(this);
+    this.addChild(this.playerList = new Entity());
     this.addChild(this.playerCursor = new Cursor(this));
-    this.addChild(this.player = new Player(this));
     this.addChild(this.playerShots = new Entity());
 
     // Enemies
@@ -1422,8 +1431,18 @@ Master.boundY = 284;
 Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
 
 Master.prototype.reset = function () {
-    // TODO: Implement a real reset (clearing effects, etc.)
-    this.player.reset();
+    // Clear old stuff
+    this.playerShots.clearChildren();
+    this.enemies.clearChildren();
+    this.enemyShots.clearChildren();
+    this.powerups.clearChildren();
+    this.effects.clearChildren();
+    this.overlays.clearChildren();
+
+    // Reset the player
+    this.playerInternal.reset();
+    this.player = this.playerInternal;
+    this.playerList.addChild(this.player);
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
@@ -1731,7 +1750,7 @@ Master.prototype.updateGame = function (ms) {
             template.instantiate(this.effects, this.player.x, this.player.y);
         }
 
-        this.removeChild(this.player);
+        this.playerList.removeChild(this.player);
         this.player = null;
 
         // Re-enable the cursor
@@ -1844,7 +1863,7 @@ function Display(master) {
     this.blinkTimer = 0;
     this.blink = false;
 
-    var player = master.player;
+    var player = master.playerInternal;
     var x = -299;
     var y = 227;
     this.ammo = [];
