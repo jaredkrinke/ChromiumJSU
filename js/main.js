@@ -1133,7 +1133,6 @@ function GroundSegment(template, x, y, width, height) {
     this.elements = [template.image];
 }
 
-// TODO: Make sure that portrait resolution doesn't draw extra ground on the top and bottom!
 GroundSegment.prototype = Object.create(Entity.prototype);
 
 GroundSegment.prototype.update = function (ms) {
@@ -2236,7 +2235,6 @@ MainMenu.prototype.startNewGame = function () {
         this.startNewGameInternal();
     } else {
         // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
-        // TODO: Show the background here as well
         var mainMenu = this;
         var loadingLayer = new LoadingLayer(this.background);
         Radius.pushLayer(loadingLayer);
