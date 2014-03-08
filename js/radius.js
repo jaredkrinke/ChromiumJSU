@@ -501,6 +501,7 @@ Layer.prototype = {
         context.restore();
 
         // By default, cover up the areas outside the normal coordinate system
+        // TODO: Add some way to override this behavior--it may not be needed everywhere
         var widthFactor = canvas.width / 640;
         var heightFactor = canvas.height / 480;
         context.fillStyle = 'black';
