@@ -1,7 +1,4 @@
-﻿Bugs:
-Fullscreen portrait mode looks bad
-
-For beta 2:
+﻿For beta 2:
 Complete more levels
 Add level transitions
 Add "don't let enemies through" logic/text?
