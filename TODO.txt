@@ -1,15 +1,14 @@
-﻿For beta 1:
-Add menus
+﻿For beta 2:
 Complete more levels
-Pause button?
-Add lives
-Add super bombs
+Add level transitions
 Add "don't let enemies through" logic/text?
-Add end game message
+Pause button?
+Auto-pause of some sort?
+Add lives?
+Add super bombs? (How would touch control work?)
+Any other power-ups?
+Different difficulty levels?
 
-For final:
+For release candidate:
 Handle loading errors
 Add scoring?
-
-Consider:
-Enemy ammo could "sparkle" by flipping sign on width/height randomly (the original does this)

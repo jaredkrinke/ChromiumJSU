@@ -7,7 +7,8 @@
 
 LockingList.action = {
     append: 0,
-    remove: 1
+    remove: 1,
+    clear: 2
 };
 
 // TODO: Consider making the internal versions hidden
@@ -38,6 +39,10 @@ LockingList.prototype.remove = function (item) {
     }
 };
 
+LockingList.prototype.getCount = function () {
+    return this.items.length;
+};
+
 LockingList.prototype.lock = function () {
     this.locked = true;
 };
@@ -56,6 +61,10 @@ LockingList.prototype.unlock = function () {
                 case LockingList.action.remove:
                     this.removeInternal(action.item);
                     break;
+
+                case LockingList.action.clear:
+                    this.clearInternal();
+                    break;
             }
         }
         this.pendingActions.length = 0;
@@ -71,6 +80,18 @@ LockingList.prototype.forEach = function (callback, that) {
         callback.call(that, this.items[i]);
     }
     this.unlock();
+};
+
+LockingList.prototype.clearInternal = function () {
+    this.items.length = 0;
+}
+
+LockingList.prototype.clear = function () {
+    if (this.locked) {
+        this.pendingActions.push({ type: LockingList.action.clear });
+    } else {
+        this.clearInternal();
+    }
 };
 
 function Event() {
@@ -478,6 +499,23 @@ Layer.prototype = {
         });
 
         context.restore();
+
+        // By default, cover up the areas outside the normal coordinate system
+        // TODO: Add some way to override this behavior--it may not be needed everywhere
+        var widthFactor = canvas.width / 640;
+        var heightFactor = canvas.height / 480;
+        context.fillStyle = 'black';
+        if (widthFactor > heightFactor) {
+            // Landscape
+            var overlayWidth = Math.ceil((canvas.width - canvas.height * 4 / 3) / 2);
+            context.fillRect(0, 0, overlayWidth, canvas.height);
+            context.fillRect(canvas.width - overlayWidth, 0, canvas.width, canvas.height);
+        } else if (widthFactor < heightFactor) {
+            // Portrait
+            var overlayHeight = Math.ceil((canvas.height - canvas.width * 3 / 4) / 2);
+            context.fillRect(0, 0, canvas.width, overlayHeight);
+            context.fillRect(0, canvas.height - overlayHeight, canvas.width, canvas.height);
+        }
     }
 };
 
@@ -565,6 +603,12 @@ Entity.prototype = {
         }
     },
 
+    clearChildren: function () {
+        if (this.children) {
+            this.children.clear();
+        }
+    },
+
     forEachChild: function (f, that) {
         if (this.children) {
             this.children.forEach(f, that);
@@ -584,6 +628,13 @@ Entity.prototype = {
                 }
             }, this);
         }
+    },
+
+    getChildCount: function () {
+        if (this.children) {
+            return this.children.getCount();
+        }
+        return 0;
     },
 
     update: function (ms) {
@@ -1013,6 +1064,7 @@ var Radius = new function () {
                     var canvasX = canvasCoordinates[0];
                     var canvasY = canvasCoordinates[1];
                     var localCoordinates = Transform2D.transform(transform, [canvasX, canvasY]);
+                    this.lastMouseCoordinates = localCoordinates;
                     activeLayer.mouseButtonPressed(button, pressed, localCoordinates[0], localCoordinates[1]);
                 }
             }, function (globalX, globalY) {
@@ -1022,6 +1074,7 @@ var Radius = new function () {
                     var canvasX = canvasCoordinates[0];
                     var canvasY = canvasCoordinates[1];
                     var localCoordinates = Transform2D.transform(transform, [canvasX, canvasY]);
+                    this.lastMouseCoordinates = localCoordinates;
                     activeLayer.mouseMoved(localCoordinates[0], localCoordinates[1]);
                 }
             }, function () {
@@ -1039,6 +1092,15 @@ var Radius = new function () {
 
             // Update cursor, if needed
             var cursor = activeLayer.cursor || 'auto';
+            if (this.lastMouseCoordinates) {
+                // Check and see if the mouse is inside the canvas but outside the normal coordinate system
+                var mouseX = this.lastMouseCoordinates[0];
+                var mouseY = this.lastMouseCoordinates[1];
+                if (mouseX < -320 || mouseX > 320 || mouseY < -240 || mouseY > 240) {
+                    // Mouse is outside normal coordinate system, so force the cursor to be shown
+                    cursor = 'auto';
+                }
+            }
             if (canvas.style.cursor !== cursor) {
                 canvas.style.cursor = cursor;
             }

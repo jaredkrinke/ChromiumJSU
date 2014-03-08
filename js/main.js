@@ -1,6 +1,41 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+function Timer(period, f) {
+    Entity.call(this);
+    this.period = period;
+    this.f = f;
+    this.timer = 0;
+}
+
+Timer.prototype = Object.create(Entity.prototype);
+
+Timer.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= this.period) {
+        this.dead = true;
+        this.f.call();
+    }
+};
+
+function Message(text) {
+    Entity.call(this);
+    this.timer = 0;
+    this.opacity = 0;
+    this.elements = [new Text(text, Message.font, 0, 0, 'center')];
+}
+
+Message.prototype = Object.create(Entity.prototype);
+Message.font = '48px sans-serif';
+Message.fadeInPeriod = 3000;
+
+Message.prototype.update = function (ms) {
+    if (this.timer < Message.fadeInPeriod) {
+        this.timer += ms;
+        this.opacity = Math.min(1, this.timer / Message.fadeInPeriod);
+    }
+};
+
 function Burst(image, x, y, width1, height1, width2, height2, duration, delay, vx, vy, maxOpacity) {
     Entity.call(this, x, y, width1, height1);
     this.duration = duration;
@@ -504,7 +539,7 @@ PlayerSuperShields.prototype.update = function (ms) {
 };
 
 function Player(master) {
-    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, Player.maxHealth, 100,
+    Ship.call(this, master, 0, 0, Player.shipWidth, Player.shipHeight, 0, 100,
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(PowerUp.shadow2Image, 64, 64, 1000)],
@@ -517,14 +552,9 @@ function Player(master) {
 
     this.shieldImage = new PlayerShields();
     this.superShieldImage = new PlayerSuperShields(this);
-    this.shields = 0;
     this.elements = [Player.image, Player.exhaustImage];
 
     // Movement
-    this.cursorX = 0;
-    this.cursorY = -Player.boundY;
-    this.targetX = this.cursorX;
-    this.targetY = this.cursorY;
     this.movingLeft = false;
     this.movingRight = false;
     this.movingUp = false;
@@ -600,8 +630,25 @@ Player.boundX = 284;
 Player.boundY = 213;
 
 Player.prototype.reset = function () {
-    var count = this.guns.length;
+    // Set starting health, shields, and ammo
+    this.health = Player.maxHealth;
+    this.shields = 0;
+    var count = this.ammo.length;
     for (var i = 0; i < count; i++) {
+        this.ammo[i] = 0;
+    }
+
+    // Reset position
+    this.cursorX = 0;
+    this.cursorY = -Player.boundY;
+    this.targetX = this.cursorX;
+    this.targetY = this.cursorY;
+    this.offsetX = 0;
+    this.offsetY = 0;
+
+    // Reset guns
+    count = this.guns.length;
+    for (i = 0; i < count; i++) {
         this.guns[i].reset();
     }
 };
@@ -1086,7 +1133,6 @@ function GroundSegment(template, x, y, width, height) {
     this.elements = [template.image];
 }
 
-// TODO: Make sure that portrait resolution doesn't draw extra ground on the top and bottom!
 GroundSegment.prototype = Object.create(Entity.prototype);
 
 GroundSegment.prototype.update = function (ms) {
@@ -1187,12 +1233,30 @@ function Level(master, waves) {
     this.master = master;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
+    this.endTime = 0;
     var count = waves.length;
     for (var i = 0; i < count; i++) {
         var wave = waves[i];
         wave.factory.call(this, wave.start, wave.duration, wave.density);
     }
 }
+
+Level.prototype.addAction = function (action, isEnemy) {
+    this.queue.insert(action);
+
+    // Keep track of the last enemy (plus a little bit of buffer)
+    if (isEnemy) {
+        this.endTime = Math.max(this.endTime, action.time + 1000);
+    }
+};
+
+Level.prototype.addEnemy = function (enemy) {
+    this.addAction(enemy, true);
+};
+
+Level.prototype.addPowerUp = function (powerup) {
+    this.addAction(powerup, false);
+};
 
 Level.prototype.addStraightWave = function (start, duration, density) {
     // TODO: Scale xRand?
@@ -1286,7 +1350,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
                 break;
         }
 
-        this.queue.insert(new LevelAction(factory, t, x, waveY));
+        this.addEnemy(new LevelAction(factory, t, x, waveY));
         t += frequency + fJitter * (Math.random() * 2 - 1);
     }
 };
@@ -1302,7 +1366,7 @@ Level.prototype.addPowerUps = function (start, duration, firsts) {
         // Loop through and add the power-up
         var t = start + firsts[j] + randomModifiers[j] * Math.random();
         while (t < start + duration) {
-            this.queue.insert(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
+            this.addPowerUp(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
             t += frequencies[j] + (Math.random() - 0.5) * randomModifiers[j] * 2;
         }
     }
@@ -1321,6 +1385,11 @@ Level.prototype.update = function (ms) {
             this.master.addPowerUp(item);
         }
     }
+
+    // Check to see if the level is complete (i.e. all enemies have been added)
+    if (!this.complete && this.timer > this.endTime) {
+        this.complete = true;
+    }
 };
 
 function Master(layer) {
@@ -1331,14 +1400,18 @@ function Master(layer) {
     this.ammoCollected = new Event();
     this.healthCollected = new Event();
     this.shieldsCollected = new Event();
+    this.lost = new Event();
+    this.won = new Event();
 
     // Background
-    this.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.addChild(new Ground(GroundTemplates.metal));
+    this.addChild(this.background = new Entity());
+    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.background.addChild(new Ground(GroundTemplates.metal));
 
     // Player (and cursor)
+    this.playerInternal = new Player(this);
+    this.addChild(this.playerList = new Entity());
     this.addChild(this.playerCursor = new Cursor(this));
-    this.addChild(this.player = new Player(this));
     this.addChild(this.playerShots = new Entity());
 
     // Enemies
@@ -1350,6 +1423,9 @@ function Master(layer) {
 
     // Special effects
     this.addChild(this.effects = new Entity());
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
 }
 
 Master.prototype = Object.create(Entity.prototype);
@@ -1358,11 +1434,23 @@ Master.boundY = 284;
 Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
 
 Master.prototype.reset = function () {
-    // TODO: Implement a real reset (clearing effects, etc.)
-    this.player.reset();
+    // Clear old stuff
+    this.playerShots.clearChildren();
+    this.enemies.clearChildren();
+    this.enemyShots.clearChildren();
+    this.powerups.clearChildren();
+    this.effects.clearChildren();
+    this.overlays.clearChildren();
+
+    // Reset the player
+    this.playerInternal.reset();
+    this.player = this.playerInternal;
+    this.playerList.addChild(this.player);
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
+    this.levelComplete = false;
+    this.done = false;
 
     // TODO: Don't just load this by default
     this.level = this.loadLevel1();
@@ -1370,7 +1458,7 @@ Master.prototype.reset = function () {
     // TODO: Load a level instead of testing one enemy
     //this.level = new Level(this, [{
     //    factory: function (start, duration, density) {
-    //        this.addWave(Boss0, 0, 100, undefined, undefined, 200, 0, 0, 0);
+    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
     //    },
 
     //    start: 0,
@@ -1408,6 +1496,10 @@ Master.prototype.addPowerUp = function (powerup) {
 
 Master.prototype.removePowerUp = function (powerup) {
     this.powerups.removeChild(powerup);
+};
+
+Master.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
 };
 
 Master.prototype.checkShotCollision = function (shot, b) {
@@ -1650,6 +1742,7 @@ Master.prototype.updateGame = function (ms) {
     }, this);
 
     // Check for loss
+    var wonOrLost = false;
     if (this.player && this.player.health <= 0) {
         // TODO: Shouldn't this be consolidated into a method on Ship so enemies don't duplicate the code?
         // Sound effect
@@ -1661,16 +1754,37 @@ Master.prototype.updateGame = function (ms) {
             template.instantiate(this.effects, this.player.x, this.player.y);
         }
 
-        this.removeChild(this.player);
+        this.playerList.removeChild(this.player);
         this.player = null;
 
         // Re-enable the cursor
         this.layer.cursor = 'auto';
+
+        // Signal the loss
+        this.lost.fire();
+        wonOrLost = true;
     }
 
-    // Add new enemies according to the level
-    if (this.level) {
+    // Add new enemies according to the level (assuming the player is still alive)
+    if (this.player && this.level) {
         this.level.update(ms);
+
+        // Check for end of level (no enemies queued, no enemies or enemy shots on the screen)
+        if (!this.levelCompleted && this.level.complete && this.enemies.getChildCount() === 0 && this.enemyShots.getChildCount() === 0) {
+            this.levelCompleted = true;
+
+            // Signal the win
+            this.won.fire();
+            wonOrLost = true;
+        }
+    }
+
+    // Set a timer to exit the game (if the player won or lost)
+    if (wonOrLost) {
+        var master = this;
+        this.effects.addChild(new Timer(3000, function () {
+            master.done = true;
+        }));
     }
 };
 
@@ -1682,13 +1796,17 @@ function Electricity(x, y, width, height) {
         this.elements.push(new ImageRegion(Electricity.imageSrc, 'blue', 0, 0, 1, 0.5, 0, height / 2, width, height / 2));
     }
 
-    this.timer = Electricity.period;
-    this.update(0);
+    this.reset();
 }
 
 Electricity.imageSrc = 'images/electricity.png'
 Electricity.period = 400;
 Electricity.prototype = Object.create(Entity.prototype);
+
+Electricity.prototype.reset = function () {
+    this.timer = Electricity.period;
+    this.update(0);
+};
 
 Electricity.prototype.update = function (ms) {
     this.timer += ms;
@@ -1725,9 +1843,8 @@ Electricity.prototype.flash = function () {
 
 function Blink(x, y, width, height) {
     Entity.call(this, x, y, width, height);
-    this.opacity = 0;
-    this.timer = Blink.duration;
     this.elements = [Blink.image];
+    this.reset();
 }
 
 Blink.duration = 600;
@@ -1735,6 +1852,11 @@ Blink.period = 150;
 Blink.opacity = 0.5;
 Blink.image = new Image('images/blink.png', 'red');
 Blink.prototype = Object.create(Entity.prototype);
+
+Blink.prototype.reset = function () {
+    this.opacity = 0;
+    this.timer = Blink.duration;
+};
 
 Blink.prototype.update = function (ms) {
     if (this.timer >= Blink.duration) {
@@ -1757,7 +1879,7 @@ function Display(master) {
     this.blinkTimer = 0;
     this.blink = false;
 
-    var player = master.player;
+    var player = master.playerInternal;
     var x = -299;
     var y = 227;
     this.ammo = [];
@@ -1799,6 +1921,14 @@ function Display(master) {
     this.healthBlink = new Blink(320, -240, 240, 480);
     player.healthLost.addListener(function () {
         display.healthBlink.blink();
+    });
+
+    // End messages
+    master.won.addListener(function () {
+        master.addOverlay(new Message('y o u   w i n'));
+    });
+    master.lost.addListener(function () {
+        master.addOverlay(new Message('g a m e   o v e r'));
     });
 
     this.addChild(this.electricityLeft);
@@ -1856,6 +1986,10 @@ Display.prototype.update = function (ms) {
         this.shieldBar.y = Display.barBaseY + height;
         this.superShieldBar.y = this.shieldBar.y;
         this.superShieldBar.opacity = Math.max(0, (player.shields - Player.maxShields) / Player.maxShields);
+    } else {
+        this.healthBar.height = 0;
+        this.shieldBar.height = 0;
+        this.superShieldBar.opacity = 0;
     }
 
     if (this.ammoBackground.opacity > Display.defaultOpacity) {
@@ -1863,6 +1997,14 @@ Display.prototype.update = function (ms) {
     }
 
     this.updateChildren(ms);
+};
+
+Display.prototype.reset = function () {
+    this.blinkTimer = 0;
+    this.electricityLeft.reset();
+    this.electricityRight.reset();
+    this.healthBlink.reset();
+    this.update(0);
 };
 
 function Cursor(master) {
@@ -1900,9 +2042,6 @@ function GameLayer() {
     this.addEntity(this.master);
     this.addEntity(this.display);
 
-    // TODO: This should also reset the display (and anything in the layer, if necessary)
-    this.master.reset();
-
     // Keyboard controls
     this.keyPressedHandlers = {
         up: GameLayer.prototype.moveUp,
@@ -1916,6 +2055,34 @@ function GameLayer() {
 
 GameLayer.prototype = Object.create(Layer.prototype);
 
+GameLayer.prototype.reset = function () {
+    this.master.reset();
+    this.display.reset();
+};
+
+GameLayer.prototype.start = function () {
+    Radius.pushLayer(this);
+};
+
+GameLayer.prototype.stop = function () {
+    Radius.popLayer();
+};
+
+GameLayer.prototype.keyPressed = function (key, pressed) {
+    if (this.master.done) {
+        // Game is over, so exit on any key press
+        if (pressed) {
+            this.stop();
+        }
+    } else {
+        // In game
+        var keyPressedHandler = this.keyPressedHandlers[key];
+        if (keyPressedHandler) {
+            keyPressedHandler.call(this, pressed);
+        }
+    }
+};
+
 // TODO: It might be nice to have this also work while the mouse is outside the canvas...
 GameLayer.prototype.mouseMoved = function (x, y) {
     this.master.playerCursor.setPosition(x, y);
@@ -1923,8 +2090,16 @@ GameLayer.prototype.mouseMoved = function (x, y) {
 
 // TODO: It would be nice to have shooting work while the mouse is outside the canvas...
 GameLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
-    if (button === MouseButton.primary && this.master.player) {
-        this.master.player.setFiring(pressed);
+    if (this.master.done) {
+        // Game is over; exit on any press
+        if (pressed) {
+            this.stop();
+        }
+    } else {
+        // In game
+        if (button === MouseButton.primary && this.master.player) {
+            this.master.player.setFiring(pressed);
+        }
     }
 };
 
@@ -1977,83 +2152,178 @@ ProgressBar.prototype.setProgress = function (progress) {
     this.bar.width = progress;
 };
 
-function LoadingLayer(loadPromise, start) {
+function LoadingLayer(background) {
     Layer.call(this);
-    // TODO: This layer doesn't need to be constantly redrawn
-    var bar = new ProgressBar(0, 0, 640, 100, 'gray');
-    this.addEntity(bar);
-    loadPromise.then(start, null, function (progress) {
-        bar.setProgress(progress);
-    });
+    // TODO: This layer may not need to be constantly redrawn
+    this.bar = new ProgressBar(0, 0, 640, 100, 'gray');
+    if (background) {
+        this.addEntity(background);
+    }
+    this.addEntity(this.bar);
 }
 
 LoadingLayer.prototype = Object.create(Layer.prototype);
 
+LoadingLayer.prototype.load = function (loadPromise, start) {
+    var loadingLayer = this;
+    loadPromise.then(start, null, function (progress) {
+        loadingLayer.bar.setProgress(progress);
+    });
+};
+
+function MainMenu(loadPromise) {
+    this.gameLayer = new GameLayer();
+
+    // Setup loading
+    this.loadPromise = loadPromise;
+    this.ready = false;
+
+    // Add mandatory options
+    var mainMenu = this;
+    var audioOptions = ['On', 'Muted'];
+    var audioChoice = new Choice('Audio', audioOptions, Audio.muted ? 1 : 0);
+    audioChoice.choiceChanged.addListener(function (text) {
+        Audio.setMuted(text === audioOptions[1]);
+    });
+
+    var options = [
+        new Separator(),
+        new Button('Start New Game', function () { mainMenu.startNewGame(); }),
+        new Separator(),
+        audioChoice,
+    ];
+
+    // Add the "fullscreen" choice, if necessary
+    var fullscreenOnly = RadiusSettings && RadiusSettings.fullscreenOnly;
+    if (!fullscreenOnly) {
+        var fullscreenOptions = ['Off', 'On'];
+        var fullscreenChoice = new Choice('Fullscreen', fullscreenOptions);
+        fullscreenChoice.choiceChanged.addListener(function (text) {
+            Radius.setFullscreen(text === fullscreenOptions[1]);
+        });
+        options.splice(4, 0, fullscreenChoice);
+    }
+
+    // Setup background
+    var background = new Entity();
+    var overlay = new Entity(0, 0, 640, 480);
+    var box = new Rectangle();
+    box.color = 'black';
+    box.opacity = 0.5;
+    overlay.elements = [box];
+    background.addChild(this.gameLayer.master.background);
+    background.addChild(overlay);
+    this.background = background;
+
+    // Create the form
+    FormLayer.call(this, new NestedGridForm(1, [
+        new Title('Chromium JSU'),
+        new NestedFlowForm(1, options)
+    ]), background);
+}
+
+MainMenu.prototype = Object.create(FormLayer.prototype);
+
+MainMenu.prototype.startNewGameInternal = function () {
+    this.gameLayer.reset();
+    this.gameLayer.start();
+};
+
+MainMenu.prototype.startNewGame = function () {
+    if (this.ready) {
+        // Everything's loaded, so just go
+        this.startNewGameInternal();
+    } else {
+        // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
+        var mainMenu = this;
+        var loadingLayer = new LoadingLayer(this.background);
+        Radius.pushLayer(loadingLayer);
+        loadingLayer.load(this.loadPromise, function () {
+            mainMenu.ready = true;
+            Radius.popLayer();
+            mainMenu.startNewGameInternal();
+        });
+    }
+};
+
+// Set button color
+Button.focusedColor = 'red';
+
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
 
-    // Pre-load images
-    var loadPromise = Radius.images.load([
-        'images/ammoBar0.png',
-        'images/ammoBar1.png',
-        'images/ammoBar2.png',
-        'images/blink.png',
-        'images/boss0.png',
-        'images/bullet.png',
-        'images/bulletExplosion.png',
-        'images/bulletFlash.png',
-        'images/electricity.png',
-        'images/emp.png',
-        'images/empExplosion.png',
-        'images/empFlash.png',
-        'images/enemyExplosion.png',
+    // These images must be loaded to show the menu, so load them first
+    var menuLoadPromise = Radius.images.load([
         'images/groundMetal.png',
         'images/groundMetalHighlight.png',
-        'images/healthBar.png',
-        'images/omni.png',
-        'images/omniExplosion.png',
-        'images/omniShot.png',
-        'images/omniShotExplosion.png',
-        'images/omniSpinner.png',
-        'images/plasma.png',
-        'images/plasmaExplosion.png',
-        'images/plasmaFlash.png',
-        'images/player.png',
-        'images/playerShields.png',
-        'images/playerSuperShields.png',
-        'images/powerupAmmo.png',
-        'images/powerupShadow0.png',
-        'images/powerupShadow1.png',
-        'images/powerupShadow2.png',
-        'images/powerupShadow3.png',
-        'images/powerupShadow4.png',
-        'images/powerupShadow5.png',
-        'images/powerupShield.png',
-        'images/rayGun.png',
-        'images/rayGunShot.png',
-        'images/rayGunShotExplosion.png',
-        'images/shieldBar.png',
-        'images/sparkle.png',
-        'images/statBackground.png',
-        'images/statTop.png',
-        'images/straight.png',
-        'images/straightShot.png',
-        'images/straightShotExplosion.png',
-        'images/superShieldBar.png',
-        'images/tankShot.png',
-        'images/tankShotExplosion.png',
-        'images/tankShotFlash.png',
     ]);
 
-    // TODO: Consider preloading sounds (in addition to images)
-    AudioManager.load([
-        'explosion.mp3',
-        'explosionBig.mp3',
-        'explosionHuge.mp3',
-        'powerup.mp3',
-    ]);
+    // Show the main menu once critical images have loaded
+    var loadingLayer = new LoadingLayer();
+    Radius.start(loadingLayer);
+    loadingLayer.load(menuLoadPromise, function () {
+        // Now start loading everything else
+        var loadPromise = Radius.images.load([
+            'images/ammoBar0.png',
+            'images/ammoBar1.png',
+            'images/ammoBar2.png',
+            'images/blink.png',
+            'images/boss0.png',
+            'images/bullet.png',
+            'images/bulletExplosion.png',
+            'images/bulletFlash.png',
+            'images/electricity.png',
+            'images/emp.png',
+            'images/empExplosion.png',
+            'images/empFlash.png',
+            'images/enemyExplosion.png',
+            'images/healthBar.png',
+            'images/omni.png',
+            'images/omniExplosion.png',
+            'images/omniShot.png',
+            'images/omniShotExplosion.png',
+            'images/omniSpinner.png',
+            'images/plasma.png',
+            'images/plasmaExplosion.png',
+            'images/plasmaFlash.png',
+            'images/player.png',
+            'images/playerShields.png',
+            'images/playerSuperShields.png',
+            'images/powerupAmmo.png',
+            'images/powerupShadow0.png',
+            'images/powerupShadow1.png',
+            'images/powerupShadow2.png',
+            'images/powerupShadow3.png',
+            'images/powerupShadow4.png',
+            'images/powerupShadow5.png',
+            'images/powerupShield.png',
+            'images/rayGun.png',
+            'images/rayGunShot.png',
+            'images/rayGunShotExplosion.png',
+            'images/shieldBar.png',
+            'images/sparkle.png',
+            'images/statBackground.png',
+            'images/statTop.png',
+            'images/straight.png',
+            'images/straightShot.png',
+            'images/straightShotExplosion.png',
+            'images/superShieldBar.png',
+            'images/tankShot.png',
+            'images/tankShotExplosion.png',
+            'images/tankShotFlash.png',
+        ]);
 
-    Radius.start(new LoadingLayer(loadPromise, function () {
-        Radius.pushLayer(new GameLayer());
-    }));
+        // Create audio clips (note: if muted, these won't actually be loaded)
+        // TODO: Consider preloading sounds (in addition to images)
+        AudioManager.load([
+            'explosion.mp3',
+            'explosionBig.mp3',
+            'explosionHuge.mp3',
+            'powerup.mp3',
+        ]);
+
+        // Show the main menu
+        Radius.popLayer();
+        Radius.pushLayer(new MainMenu(loadPromise));
+    });
 });

@@ -752,8 +752,15 @@ Choice.prototype.activated = function () {
     }
 };
 
-function FormLayer(form) {
+function FormLayer(form, background) {
     Layer.apply(this);
+
+    // Add background first
+    if (background) {
+        this.addEntity(background);
+    }
+
+    // Add form
     this.form = form;
     form.setLayer(this);
     form.focused();
