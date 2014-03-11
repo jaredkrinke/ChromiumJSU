@@ -1435,6 +1435,7 @@ Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 
 
 Master.prototype.reset = function () {
     // Clear old stuff
+    this.playerList.clearChildren();
     this.playerShots.clearChildren();
     this.enemies.clearChildren();
     this.enemyShots.clearChildren();
@@ -1449,7 +1450,7 @@ Master.prototype.reset = function () {
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
-    this.levelComplete = false;
+    this.levelCompleted = false;
     this.done = false;
 
     // TODO: Don't just load this by default
