@@ -1,8 +1,4 @@
-﻿Bugs:
-Ship stays on screen after losing if won once
-Can't seem to win twice
-
-For beta 2:
+﻿For beta 2:
 Complete more levels
 Add level transitions
 Add "don't let enemies through" logic/text?
