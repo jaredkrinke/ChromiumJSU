@@ -1,5 +1,6 @@
 ﻿Bugs:
-Ship stayed on screen after losing when using touch...
+Ship stays on screen after losing if won once
+Can't seem to win twice
 
 For beta 2:
 Complete more levels

@@ -1453,17 +1453,17 @@ Master.prototype.reset = function () {
     this.done = false;
 
     // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
+    //this.level = this.loadLevel1();
 
     // TODO: Load a level instead of testing one enemy
-    //this.level = new Level(this, [{
-    //    factory: function (start, duration, density) {
-    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
-    //    },
+    this.level = new Level(this, [{
+        factory: function (start, duration, density) {
+            this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
+        },
 
-    //    start: 0,
-    //    duration: 100
-    //}]);
+        start: 0,
+        duration: 100
+    }]);
 };
 
 Master.prototype.addPlayerShot = function (shot) {
