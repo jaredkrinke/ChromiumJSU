@@ -1504,6 +1504,7 @@ function Master(layer) {
     this.shieldsCollected = new Event();
     this.lost = new Event();
     this.won = new Event();
+    this.levelTransition = new Event();
 
     // Background
     this.addChild(this.background = new Entity());
@@ -1525,9 +1526,6 @@ function Master(layer) {
 
     // Special effects
     this.addChild(this.effects = new Entity());
-
-    // Messages (or any other overlays)
-    this.addChild(this.overlays = new Entity());
 }
 
 Master.prototype = Object.create(Entity.prototype);
@@ -1543,7 +1541,6 @@ Master.prototype.reset = function () {
     this.enemyShots.clearChildren();
     this.powerups.clearChildren();
     this.effects.clearChildren();
-    this.overlays.clearChildren();
 
     // Reset the player
     this.playerInternal.reset();
@@ -1552,11 +1549,15 @@ Master.prototype.reset = function () {
 
     // Turn off the mouse cursor since the player moves with the mouse
     this.layer.cursor = 'none';
-    this.levelCompleted = false;
     this.done = false;
 
     // Load the first level
-    this.levelIndex = 0;
+    this.setLevel(0);
+};
+
+Master.prototype.setLevel = function (levelIndex) {
+    this.levelIndex = levelIndex;
+    this.levelCompleted = false;
     this.level = Levels.levels[this.levelIndex](this);
 };
 
@@ -1590,10 +1591,6 @@ Master.prototype.addPowerUp = function (powerup) {
 
 Master.prototype.removePowerUp = function (powerup) {
     this.powerups.removeChild(powerup);
-};
-
-Master.prototype.addOverlay = function (child) {
-    this.overlays.addChild(child);
 };
 
 Master.prototype.checkShotCollision = function (shot, b) {
@@ -1795,6 +1792,12 @@ Master.prototype.updateGame = function (ms) {
             this.won.fire(this.levelIndex, lastLevelCompleted);
             if (lastLevelCompleted) {
                 wonOrLost = true;
+            } else {
+                // Level transition
+                var master = this;
+                this.effects.addChild(new Timer(9000, function () {
+                    master.setLevel(master.levelIndex + 1);
+                }));
             }
         }
     }
@@ -1945,20 +1948,23 @@ function Display(master) {
     // End messages
     master.won.addListener(function (levelIndex, lastLevelCompleted) {
         if (lastLevelCompleted) {
-            master.addOverlay(new Message('y o u   w i n'));
+            display.addOverlay(new Message('y o u   w i n'));
         } else {
-            master.addOverlay(new Message('l e v e l   ' + (levelIndex + 1) + '   c o m p l e t e', 2000));
+            display.addOverlay(new Message('l e v e l   ' + (levelIndex + 1) + '   c o m p l e t e', 2000));
 
             // TODO: Transition effect for next level
         }
     });
     master.lost.addListener(function () {
-        master.addOverlay(new Message('g a m e   o v e r'));
+        display.addOverlay(new Message('g a m e   o v e r'));
     });
 
     this.addChild(this.electricityLeft);
     this.addChild(this.electricityRight);
     this.addChild(this.healthBlink);
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
 }
 
 Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
@@ -2029,7 +2035,12 @@ Display.prototype.reset = function () {
     this.electricityLeft.reset();
     this.electricityRight.reset();
     this.healthBlink.reset();
+    this.overlays.clearChildren();
     this.update(0);
+};
+
+Display.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
 };
 
 function Cursor(master) {
