@@ -678,7 +678,6 @@ Player.prototype.setMovingDown = function (pressed) {
 
 Player.prototype.takeDamage = function (damage) {
     if (this.shields) {
-        // TODO: Any special effect if shields absorbed the hit? No knockback?
         var shieldDamage = Math.min(damage, this.shields);
         this.shields -= shieldDamage;
         damage -= shieldDamage;
@@ -1647,14 +1646,11 @@ Master.prototype.updateGame = function (ms) {
             remove = true;
         } else {
             // Check collisions
-            // TODO: This is actually a different algorithm than in the original (it used the average of width and
-            // height compared to the Manhattan distance...)
             if (this.player && this.checkShotCollision(shot, this.player)) {
                 this.player.takeDamage(shot.damage);
                 remove = true;
 
                 // Knock back
-                // TODO: Should this also knock horizontally?
                 this.player.offsetY += shot.damage / 0.87 * shot.vy;
 
                 // Add explosion
@@ -1672,7 +1668,6 @@ Master.prototype.updateGame = function (ms) {
         var remove = false;
         if (enemy.y < -Master.boundY) {
             // Out of bounds
-            // TODO: This should cause the player to lose a life
             remove = true;
         } else if (enemy.health <= 0) {
             // Destroyed
@@ -1816,7 +1811,6 @@ Electricity.prototype.update = function (ms) {
         this.opacity = 0;
     } else {
         // Move
-        // TODO: Base on actual screen dimensions?
         this.opacity = 1;
         this.y = -240 + (480 + this.totalHeight) * this.timer / Electricity.period;
 
