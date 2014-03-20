@@ -18,10 +18,12 @@ Timer.prototype.update = function (ms) {
     }
 };
 
-function Message(text) {
+function Message(text, period) {
     Entity.call(this);
     this.timer = 0;
     this.opacity = 0;
+    this.period = Message.fadeInPeriod + period;
+    this.fadeOutPeriod = 2 * Message.fadeInPeriod + period;
     this.elements = [new Text(text, Message.font, 0, 0, 'center')];
 }
 
@@ -31,8 +33,16 @@ Message.fadeInPeriod = 3000;
 
 Message.prototype.update = function (ms) {
     if (this.timer < Message.fadeInPeriod) {
+        // Fade in
         this.timer += ms;
         this.opacity = Math.min(1, this.timer / Message.fadeInPeriod);
+    } else if (this.period !== undefined && this.timer < this.period) {
+        // Persist
+        this.timer += ms;
+    } else if (this.period !== undefined && this.timer < this.fadeOutPeriod) {
+        // Fade out
+        this.timer += ms;
+        this.opacity = Math.max(0, 1 - (this.timer - this.period) / Message.fadeInPeriod);
     }
 };
 
@@ -1478,8 +1488,10 @@ Levels.loadSingleEnemyTestLevel = function (master) {
 };
 
 Levels.levels = [
-    //Levels.loadSingleEnemyTestLevel,
-    Levels.loadLevel1,
+    // TODO: Use real levels, of course...
+    Levels.loadSingleEnemyTestLevel,
+    Levels.loadSingleEnemyTestLevel,
+    //Levels.loadLevel1,
 ];
 
 function Master(layer) {
@@ -1779,8 +1791,11 @@ Master.prototype.updateGame = function (ms) {
             this.levelCompleted = true;
 
             // Signal the win
-            this.won.fire();
-            wonOrLost = true;
+            var lastLevelCompleted = (this.levelIndex == Levels.levels.length - 1);
+            this.won.fire(this.levelIndex, lastLevelCompleted);
+            if (lastLevelCompleted) {
+                wonOrLost = true;
+            }
         }
     }
 
@@ -1928,8 +1943,14 @@ function Display(master) {
     });
 
     // End messages
-    master.won.addListener(function () {
-        master.addOverlay(new Message('y o u   w i n'));
+    master.won.addListener(function (levelIndex, lastLevelCompleted) {
+        if (lastLevelCompleted) {
+            master.addOverlay(new Message('y o u   w i n'));
+        } else {
+            master.addOverlay(new Message('l e v e l   ' + (levelIndex + 1) + '   c o m p l e t e', 2000));
+
+            // TODO: Transition effect for next level
+        }
     });
     master.lost.addListener(function () {
         master.addOverlay(new Message('g a m e   o v e r'));
