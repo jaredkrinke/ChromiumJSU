@@ -1391,142 +1391,10 @@ Level.prototype.update = function (ms) {
     }
 };
 
-function Master(layer) {
-    Entity.call(this);
-    this.layer = layer;
-
-    // Events
-    this.ammoCollected = new Event();
-    this.healthCollected = new Event();
-    this.shieldsCollected = new Event();
-    this.lost = new Event();
-    this.won = new Event();
-
-    // Background
-    this.addChild(this.background = new Entity());
-    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.background.addChild(new Ground(GroundTemplates.metal));
-
-    // Player (and cursor)
-    this.playerInternal = new Player(this);
-    this.addChild(this.playerList = new Entity());
-    this.addChild(this.playerCursor = new Cursor(this));
-    this.addChild(this.playerShots = new Entity());
-
-    // Enemies
-    this.addChild(this.enemies = new Entity());
-    this.addChild(this.enemyShots = new Entity());
-
-    // Power-ups
-    this.addChild(this.powerups = new Entity());
-
-    // Special effects
-    this.addChild(this.effects = new Entity());
-
-    // Messages (or any other overlays)
-    this.addChild(this.overlays = new Entity());
-}
-
-Master.prototype = Object.create(Entity.prototype);
-Master.boundX = 640;
-Master.boundY = 284;
-Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
-
-Master.prototype.reset = function () {
-    // Clear old stuff
-    this.playerList.clearChildren();
-    this.playerShots.clearChildren();
-    this.enemies.clearChildren();
-    this.enemyShots.clearChildren();
-    this.powerups.clearChildren();
-    this.effects.clearChildren();
-    this.overlays.clearChildren();
-
-    // Reset the player
-    this.playerInternal.reset();
-    this.player = this.playerInternal;
-    this.playerList.addChild(this.player);
-
-    // Turn off the mouse cursor since the player moves with the mouse
-    this.layer.cursor = 'none';
-    this.levelCompleted = false;
-    this.done = false;
-
-    // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
-
-    // TODO: Load a level instead of testing one enemy
-    //this.level = new Level(this, [{
-    //    factory: function (start, duration, density) {
-    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
-    //    },
-
-    //    start: 0,
-    //    duration: 100
-    //}]);
-};
-
-Master.prototype.addPlayerShot = function (shot) {
-    this.playerShots.addChild(shot);
-};
-
-Master.prototype.removePlayerShot = function (shot) {
-    this.playerShots.removeChild(shot);
-};
-
-Master.prototype.addEnemy = function (enemy) {
-    this.enemies.addChild(enemy);
-};
-
-Master.prototype.removeEnemy = function (enemy) {
-    this.enemies.removeChild(enemy);
-};
-
-Master.prototype.addEnemyShot = function (shot) {
-    this.enemyShots.addChild(shot);
-};
-
-Master.prototype.removeEnemyShot = function (shot) {
-    this.enemyShots.removeChild(shot);
-};
-
-Master.prototype.addPowerUp = function (powerup) {
-    this.powerups.addChild(powerup);
-};
-
-Master.prototype.removePowerUp = function (powerup) {
-    this.powerups.removeChild(powerup);
-};
-
-Master.prototype.addOverlay = function (child) {
-    this.overlays.addChild(child);
-};
-
-Master.prototype.checkShotCollision = function (shot, b) {
-    var bw = b.shipWidth / 2;
-    var bh = b.shipHeight / 2;
-    return (shot.x >= b.x - bw)
-        && (shot.x <= b.x + bw)
-        && (shot.y >= b.y - bh)
-        && (shot.y <= b.y + bh);
-};
-
-Master.prototype.checkShipCollision = function (a, b) {
-    // Not particularly precise, but true to the original...
-    var x = a.x - b.x;
-    var y = a.y - b.y;
-    var distance = Math.abs(x) + Math.abs(y);
-    return distance < (a.shipWidth + b.shipHeight) / 4;
-};
-
-Master.prototype.checkPowerUpCollision = function (ship, powerup) {
-    // Again, kind of odd logic here
-    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
-    return distance < ship.shipHeight / 2;
-};
-
 // TODO: Where should this code go?
-Master.prototype.loadLevel1 = function (master) {
+var Levels = {};
+
+Levels.loadLevel1 = function (master) {
     var totalTime = 12000 * 20;
     var waveDuration = 500;
     time = 600 * 20;
@@ -1592,10 +1460,151 @@ Master.prototype.loadLevel1 = function (master) {
 
 
     // Ammunition and power-ups
-    var level = new Level(this, waves);
+    var level = new Level(master, waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
+};
+
+Levels.loadSingleEnemyTestLevel = function (master) {
+    return new Level(master, [{
+        factory: function (start, duration, density) {
+            this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
+        },
+
+        start: 0,
+        duration: 100
+    }]);
+};
+
+Levels.levels = [
+    //Levels.loadSingleEnemyTestLevel,
+    Levels.loadLevel1,
+];
+
+function Master(layer) {
+    Entity.call(this);
+    this.layer = layer;
+
+    // Events
+    this.ammoCollected = new Event();
+    this.healthCollected = new Event();
+    this.shieldsCollected = new Event();
+    this.lost = new Event();
+    this.won = new Event();
+
+    // Background
+    this.addChild(this.background = new Entity());
+    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.background.addChild(new Ground(GroundTemplates.metal));
+
+    // Player (and cursor)
+    this.playerInternal = new Player(this);
+    this.addChild(this.playerList = new Entity());
+    this.addChild(this.playerCursor = new Cursor(this));
+    this.addChild(this.playerShots = new Entity());
+
+    // Enemies
+    this.addChild(this.enemies = new Entity());
+    this.addChild(this.enemyShots = new Entity());
+
+    // Power-ups
+    this.addChild(this.powerups = new Entity());
+
+    // Special effects
+    this.addChild(this.effects = new Entity());
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
+}
+
+Master.prototype = Object.create(Entity.prototype);
+Master.boundX = 640;
+Master.boundY = 284;
+Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
+
+Master.prototype.reset = function () {
+    // Clear old stuff
+    this.playerList.clearChildren();
+    this.playerShots.clearChildren();
+    this.enemies.clearChildren();
+    this.enemyShots.clearChildren();
+    this.powerups.clearChildren();
+    this.effects.clearChildren();
+    this.overlays.clearChildren();
+
+    // Reset the player
+    this.playerInternal.reset();
+    this.player = this.playerInternal;
+    this.playerList.addChild(this.player);
+
+    // Turn off the mouse cursor since the player moves with the mouse
+    this.layer.cursor = 'none';
+    this.levelCompleted = false;
+    this.done = false;
+
+    // Load the first level
+    this.levelIndex = 0;
+    this.level = Levels.levels[this.levelIndex](this);
+};
+
+Master.prototype.addPlayerShot = function (shot) {
+    this.playerShots.addChild(shot);
+};
+
+Master.prototype.removePlayerShot = function (shot) {
+    this.playerShots.removeChild(shot);
+};
+
+Master.prototype.addEnemy = function (enemy) {
+    this.enemies.addChild(enemy);
+};
+
+Master.prototype.removeEnemy = function (enemy) {
+    this.enemies.removeChild(enemy);
+};
+
+Master.prototype.addEnemyShot = function (shot) {
+    this.enemyShots.addChild(shot);
+};
+
+Master.prototype.removeEnemyShot = function (shot) {
+    this.enemyShots.removeChild(shot);
+};
+
+Master.prototype.addPowerUp = function (powerup) {
+    this.powerups.addChild(powerup);
+};
+
+Master.prototype.removePowerUp = function (powerup) {
+    this.powerups.removeChild(powerup);
+};
+
+Master.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
+};
+
+Master.prototype.checkShotCollision = function (shot, b) {
+    var bw = b.shipWidth / 2;
+    var bh = b.shipHeight / 2;
+    return (shot.x >= b.x - bw)
+        && (shot.x <= b.x + bw)
+        && (shot.y >= b.y - bh)
+        && (shot.y <= b.y + bh);
+};
+
+Master.prototype.checkShipCollision = function (a, b) {
+    // Not particularly precise, but true to the original...
+    var x = a.x - b.x;
+    var y = a.y - b.y;
+    var distance = Math.abs(x) + Math.abs(y);
+    return distance < (a.shipWidth + b.shipHeight) / 4;
+};
+
+Master.prototype.checkPowerUpCollision = function (ship, powerup) {
+    // Again, kind of odd logic here
+    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
+    return distance < ship.shipHeight / 2;
 };
 
 Master.prototype.update = function (ms) {
