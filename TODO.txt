@@ -1,6 +1,7 @@
 ﻿For beta 2:
 Complete more levels
 Add level transitions
+Allow the player to unlock/start on subsequent levels?
 
 For release candidate:
 Handle loading errors
