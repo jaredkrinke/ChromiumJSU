@@ -1,13 +1,6 @@
 ﻿For beta 2:
 Complete more levels
 Add level transitions
-Add "don't let enemies through" logic/text?
-Pause button?
-Auto-pause of some sort?
-Add lives?
-Add super bombs? (How would touch control work?)
-Any other power-ups?
-Different difficulty levels?
 
 For release candidate:
 Handle loading errors
