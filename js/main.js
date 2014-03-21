@@ -1128,6 +1128,13 @@ var GroundTemplates = {
         vy: -0.048
     },
 
+    circuit: {
+        image: new Image('images/groundCircuit.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
     metalHighlight: {
         image: new Image('images/groundMetalHighlight.png', 'DarkRed'),
         segmentWidth: 640,
@@ -1148,7 +1155,17 @@ GroundSegment.prototype.update = function (ms) {
     this.y += this.template.vy * ms;
     if (this.y <= -240 - this.template.segmentHeight / 2) {
         this.y += 480 + this.template.segmentHeight;
+
+        // Change the image, if previously queued
+        if (this.nextImage) {
+            this.elements[0] = this.nextImage;
+            this.nextImage = null;
+        }
     }
+};
+
+GroundSegment.prototype.queueImageChange = function (image) {
+    this.nextImage = image;
 };
 
 function Ground(template) {
@@ -1178,6 +1195,13 @@ function Ground(template) {
 }
 
 Ground.prototype = Object.create(Entity.prototype);
+
+Ground.prototype.queueTemplateChange = function (templateName) {
+    var image = GroundTemplates[templateName].image;
+    this.forEachChild(function (child) {
+        child.queueImageChange(image);
+    });
+};
 
 function OrderedQueue(compare) {
     this.compare = compare;
@@ -1238,8 +1262,9 @@ Wave = {
 }
 
 // TODO: Maybe take a maximum time and reject all adds that come after that?
-function Level(master, waves) {
+function Level(master, groundTemplate, waves) {
     this.master = master;
+    this.groundTemplate = groundTemplate;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
     this.endTime = 0;
@@ -1470,27 +1495,29 @@ Levels.loadLevel1 = function (master) {
 
 
     // Ammunition and power-ups
-    var level = new Level(master, waves);
+    var level = new Level(master, 'metal', waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
 };
 
-Levels.loadSingleEnemyTestLevel = function (master) {
-    return new Level(master, [{
-        factory: function (start, duration, density) {
-            this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
-        },
+Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
+    return function (master) {
+        return new Level(master, groundTemplate ? groundTemplate : 'metal', [{
+            factory: function (start, duration, density) {
+                this.addWave(enemy, 0, 100, undefined, undefined, 200, 0, 0, 0);
+            },
 
-        start: 0,
-        duration: 100
-    }]);
+            start: 0,
+            duration: 100
+        }]);
+    };
 };
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    Levels.loadSingleEnemyTestLevel,
-    Levels.loadSingleEnemyTestLevel,
+    Levels.createSingleEnemyTestLevelLoader(Straight, 'metal'),
+    Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
     //Levels.loadLevel1,
 ];
 
@@ -1509,7 +1536,7 @@ function Master(layer) {
     // Background
     this.addChild(this.background = new Entity());
     this.background.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.background.addChild(new Ground(GroundTemplates.metal));
+    this.background.addChild(this.ground = new Ground(GroundTemplates.metal));
 
     // Player (and cursor)
     this.playerInternal = new Player(this);
@@ -1559,6 +1586,10 @@ Master.prototype.setLevel = function (levelIndex) {
     this.levelIndex = levelIndex;
     this.levelCompleted = false;
     this.level = Levels.levels[this.levelIndex](this);
+    
+    // Set ground image
+    var groundTemplate = this.level.groundTemplate || 'metal';
+    this.ground.queueTemplateChange(groundTemplate);
 };
 
 Master.prototype.addPlayerShot = function (shot) {
@@ -2313,6 +2344,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/empExplosion.png',
             'images/empFlash.png',
             'images/enemyExplosion.png',
+            'images/groundCircuit.png',
             'images/healthBar.png',
             'images/omni.png',
             'images/omniExplosion.png',
