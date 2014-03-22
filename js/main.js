@@ -1426,7 +1426,6 @@ Level.prototype.update = function (ms) {
     }
 };
 
-// TODO: Where should this code go?
 var Levels = {};
 
 Levels.loadLevel1 = function (master) {
@@ -1516,9 +1515,9 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    Levels.createSingleEnemyTestLevelLoader(Straight, 'metal'),
-    Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
-    //Levels.loadLevel1,
+    //Levels.createSingleEnemyTestLevelLoader(Straight, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
+    Levels.loadLevel1,
 ];
 
 function Master(layer) {
