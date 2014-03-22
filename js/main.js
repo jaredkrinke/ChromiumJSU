@@ -18,10 +18,12 @@ Timer.prototype.update = function (ms) {
     }
 };
 
-function Message(text) {
+function Message(text, period) {
     Entity.call(this);
     this.timer = 0;
     this.opacity = 0;
+    this.period = Message.fadeInPeriod + period;
+    this.fadeOutPeriod = 2 * Message.fadeInPeriod + period;
     this.elements = [new Text(text, Message.font, 0, 0, 'center')];
 }
 
@@ -31,8 +33,16 @@ Message.fadeInPeriod = 3000;
 
 Message.prototype.update = function (ms) {
     if (this.timer < Message.fadeInPeriod) {
+        // Fade in
         this.timer += ms;
         this.opacity = Math.min(1, this.timer / Message.fadeInPeriod);
+    } else if (this.period !== undefined && this.timer < this.period) {
+        // Persist
+        this.timer += ms;
+    } else if (this.period !== undefined && this.timer < this.fadeOutPeriod) {
+        // Fade out
+        this.timer += ms;
+        this.opacity = Math.max(0, 1 - (this.timer - this.period) / Message.fadeInPeriod);
     }
 };
 
@@ -1118,6 +1128,13 @@ var GroundTemplates = {
         vy: -0.048
     },
 
+    circuit: {
+        image: new Image('images/groundCircuit.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
     metalHighlight: {
         image: new Image('images/groundMetalHighlight.png', 'DarkRed'),
         segmentWidth: 640,
@@ -1138,7 +1155,17 @@ GroundSegment.prototype.update = function (ms) {
     this.y += this.template.vy * ms;
     if (this.y <= -240 - this.template.segmentHeight / 2) {
         this.y += 480 + this.template.segmentHeight;
+
+        // Change the image, if previously queued
+        if (this.nextImage) {
+            this.elements[0] = this.nextImage;
+            this.nextImage = null;
+        }
     }
+};
+
+GroundSegment.prototype.queueImageChange = function (image) {
+    this.nextImage = image;
 };
 
 function Ground(template) {
@@ -1168,6 +1195,13 @@ function Ground(template) {
 }
 
 Ground.prototype = Object.create(Entity.prototype);
+
+Ground.prototype.queueTemplateChange = function (templateName) {
+    var image = GroundTemplates[templateName].image;
+    this.forEachChild(function (child) {
+        child.queueImageChange(image);
+    });
+};
 
 function OrderedQueue(compare) {
     this.compare = compare;
@@ -1228,8 +1262,9 @@ Wave = {
 }
 
 // TODO: Maybe take a maximum time and reject all adds that come after that?
-function Level(master, waves) {
+function Level(master, groundTemplate, waves) {
     this.master = master;
+    this.groundTemplate = groundTemplate;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
     this.endTime = 0;
@@ -1391,142 +1426,9 @@ Level.prototype.update = function (ms) {
     }
 };
 
-function Master(layer) {
-    Entity.call(this);
-    this.layer = layer;
+var Levels = {};
 
-    // Events
-    this.ammoCollected = new Event();
-    this.healthCollected = new Event();
-    this.shieldsCollected = new Event();
-    this.lost = new Event();
-    this.won = new Event();
-
-    // Background
-    this.addChild(this.background = new Entity());
-    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.background.addChild(new Ground(GroundTemplates.metal));
-
-    // Player (and cursor)
-    this.playerInternal = new Player(this);
-    this.addChild(this.playerList = new Entity());
-    this.addChild(this.playerCursor = new Cursor(this));
-    this.addChild(this.playerShots = new Entity());
-
-    // Enemies
-    this.addChild(this.enemies = new Entity());
-    this.addChild(this.enemyShots = new Entity());
-
-    // Power-ups
-    this.addChild(this.powerups = new Entity());
-
-    // Special effects
-    this.addChild(this.effects = new Entity());
-
-    // Messages (or any other overlays)
-    this.addChild(this.overlays = new Entity());
-}
-
-Master.prototype = Object.create(Entity.prototype);
-Master.boundX = 640;
-Master.boundY = 284;
-Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
-
-Master.prototype.reset = function () {
-    // Clear old stuff
-    this.playerList.clearChildren();
-    this.playerShots.clearChildren();
-    this.enemies.clearChildren();
-    this.enemyShots.clearChildren();
-    this.powerups.clearChildren();
-    this.effects.clearChildren();
-    this.overlays.clearChildren();
-
-    // Reset the player
-    this.playerInternal.reset();
-    this.player = this.playerInternal;
-    this.playerList.addChild(this.player);
-
-    // Turn off the mouse cursor since the player moves with the mouse
-    this.layer.cursor = 'none';
-    this.levelCompleted = false;
-    this.done = false;
-
-    // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
-
-    // TODO: Load a level instead of testing one enemy
-    //this.level = new Level(this, [{
-    //    factory: function (start, duration, density) {
-    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
-    //    },
-
-    //    start: 0,
-    //    duration: 100
-    //}]);
-};
-
-Master.prototype.addPlayerShot = function (shot) {
-    this.playerShots.addChild(shot);
-};
-
-Master.prototype.removePlayerShot = function (shot) {
-    this.playerShots.removeChild(shot);
-};
-
-Master.prototype.addEnemy = function (enemy) {
-    this.enemies.addChild(enemy);
-};
-
-Master.prototype.removeEnemy = function (enemy) {
-    this.enemies.removeChild(enemy);
-};
-
-Master.prototype.addEnemyShot = function (shot) {
-    this.enemyShots.addChild(shot);
-};
-
-Master.prototype.removeEnemyShot = function (shot) {
-    this.enemyShots.removeChild(shot);
-};
-
-Master.prototype.addPowerUp = function (powerup) {
-    this.powerups.addChild(powerup);
-};
-
-Master.prototype.removePowerUp = function (powerup) {
-    this.powerups.removeChild(powerup);
-};
-
-Master.prototype.addOverlay = function (child) {
-    this.overlays.addChild(child);
-};
-
-Master.prototype.checkShotCollision = function (shot, b) {
-    var bw = b.shipWidth / 2;
-    var bh = b.shipHeight / 2;
-    return (shot.x >= b.x - bw)
-        && (shot.x <= b.x + bw)
-        && (shot.y >= b.y - bh)
-        && (shot.y <= b.y + bh);
-};
-
-Master.prototype.checkShipCollision = function (a, b) {
-    // Not particularly precise, but true to the original...
-    var x = a.x - b.x;
-    var y = a.y - b.y;
-    var distance = Math.abs(x) + Math.abs(y);
-    return distance < (a.shipWidth + b.shipHeight) / 4;
-};
-
-Master.prototype.checkPowerUpCollision = function (ship, powerup) {
-    // Again, kind of odd logic here
-    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
-    return distance < ship.shipHeight / 2;
-};
-
-// TODO: Where should this code go?
-Master.prototype.loadLevel1 = function (master) {
+Levels.loadLevel1 = function (master) {
     var totalTime = 12000 * 20;
     var waveDuration = 500;
     time = 600 * 20;
@@ -1592,10 +1494,156 @@ Master.prototype.loadLevel1 = function (master) {
 
 
     // Ammunition and power-ups
-    var level = new Level(this, waves);
+    var level = new Level(master, 'metal', waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
+};
+
+Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
+    return function (master) {
+        return new Level(master, groundTemplate ? groundTemplate : 'metal', [{
+            factory: function (start, duration, density) {
+                this.addWave(enemy, 0, 100, undefined, undefined, 200, 0, 0, 0);
+            },
+
+            start: 0,
+            duration: 100
+        }]);
+    };
+};
+
+Levels.levels = [
+    // TODO: Use real levels, of course...
+    //Levels.createSingleEnemyTestLevelLoader(Straight, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
+    Levels.loadLevel1,
+];
+
+function Master(layer) {
+    Entity.call(this);
+    this.layer = layer;
+
+    // Events
+    this.ammoCollected = new Event();
+    this.healthCollected = new Event();
+    this.shieldsCollected = new Event();
+    this.lost = new Event();
+    this.won = new Event();
+    this.levelTransition = new Event();
+
+    // Background
+    this.addChild(this.background = new Entity());
+    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.background.addChild(this.ground = new Ground(GroundTemplates.metal));
+
+    // Player (and cursor)
+    this.playerInternal = new Player(this);
+    this.addChild(this.playerList = new Entity());
+    this.addChild(this.playerCursor = new Cursor(this));
+    this.addChild(this.playerShots = new Entity());
+
+    // Enemies
+    this.addChild(this.enemies = new Entity());
+    this.addChild(this.enemyShots = new Entity());
+
+    // Power-ups
+    this.addChild(this.powerups = new Entity());
+
+    // Special effects
+    this.addChild(this.effects = new Entity());
+}
+
+Master.prototype = Object.create(Entity.prototype);
+Master.boundX = 640;
+Master.boundY = 284;
+Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
+
+Master.prototype.reset = function () {
+    // Clear old stuff
+    this.playerList.clearChildren();
+    this.playerShots.clearChildren();
+    this.enemies.clearChildren();
+    this.enemyShots.clearChildren();
+    this.powerups.clearChildren();
+    this.effects.clearChildren();
+
+    // Reset the player
+    this.playerInternal.reset();
+    this.player = this.playerInternal;
+    this.playerList.addChild(this.player);
+
+    // Turn off the mouse cursor since the player moves with the mouse
+    this.layer.cursor = 'none';
+    this.done = false;
+
+    // Load the first level
+    this.setLevel(0);
+};
+
+Master.prototype.setLevel = function (levelIndex) {
+    this.levelIndex = levelIndex;
+    this.levelCompleted = false;
+    this.level = Levels.levels[this.levelIndex](this);
+    
+    // Set ground image
+    var groundTemplate = this.level.groundTemplate || 'metal';
+    this.ground.queueTemplateChange(groundTemplate);
+};
+
+Master.prototype.addPlayerShot = function (shot) {
+    this.playerShots.addChild(shot);
+};
+
+Master.prototype.removePlayerShot = function (shot) {
+    this.playerShots.removeChild(shot);
+};
+
+Master.prototype.addEnemy = function (enemy) {
+    this.enemies.addChild(enemy);
+};
+
+Master.prototype.removeEnemy = function (enemy) {
+    this.enemies.removeChild(enemy);
+};
+
+Master.prototype.addEnemyShot = function (shot) {
+    this.enemyShots.addChild(shot);
+};
+
+Master.prototype.removeEnemyShot = function (shot) {
+    this.enemyShots.removeChild(shot);
+};
+
+Master.prototype.addPowerUp = function (powerup) {
+    this.powerups.addChild(powerup);
+};
+
+Master.prototype.removePowerUp = function (powerup) {
+    this.powerups.removeChild(powerup);
+};
+
+Master.prototype.checkShotCollision = function (shot, b) {
+    var bw = b.shipWidth / 2;
+    var bh = b.shipHeight / 2;
+    return (shot.x >= b.x - bw)
+        && (shot.x <= b.x + bw)
+        && (shot.y >= b.y - bh)
+        && (shot.y <= b.y + bh);
+};
+
+Master.prototype.checkShipCollision = function (a, b) {
+    // Not particularly precise, but true to the original...
+    var x = a.x - b.x;
+    var y = a.y - b.y;
+    var distance = Math.abs(x) + Math.abs(y);
+    return distance < (a.shipWidth + b.shipHeight) / 4;
+};
+
+Master.prototype.checkPowerUpCollision = function (ship, powerup) {
+    // Again, kind of odd logic here
+    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
+    return distance < ship.shipHeight / 2;
 };
 
 Master.prototype.update = function (ms) {
@@ -1770,8 +1818,17 @@ Master.prototype.updateGame = function (ms) {
             this.levelCompleted = true;
 
             // Signal the win
-            this.won.fire();
-            wonOrLost = true;
+            var lastLevelCompleted = (this.levelIndex == Levels.levels.length - 1);
+            this.won.fire(this.levelIndex, lastLevelCompleted);
+            if (lastLevelCompleted) {
+                wonOrLost = true;
+            } else {
+                // Level transition
+                var master = this;
+                this.effects.addChild(new Timer(9000, function () {
+                    master.setLevel(master.levelIndex + 1);
+                }));
+            }
         }
     }
 
@@ -1919,16 +1976,25 @@ function Display(master) {
     });
 
     // End messages
-    master.won.addListener(function () {
-        master.addOverlay(new Message('y o u   w i n'));
+    master.won.addListener(function (levelIndex, lastLevelCompleted) {
+        if (lastLevelCompleted) {
+            display.addOverlay(new Message('y o u   w i n'));
+        } else {
+            display.addOverlay(new Message('l e v e l   ' + (levelIndex + 1) + '   c o m p l e t e', 2000));
+
+            // TODO: Transition effect for next level
+        }
     });
     master.lost.addListener(function () {
-        master.addOverlay(new Message('g a m e   o v e r'));
+        display.addOverlay(new Message('g a m e   o v e r'));
     });
 
     this.addChild(this.electricityLeft);
     this.addChild(this.electricityRight);
     this.addChild(this.healthBlink);
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
 }
 
 Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
@@ -1999,7 +2065,12 @@ Display.prototype.reset = function () {
     this.electricityLeft.reset();
     this.electricityRight.reset();
     this.healthBlink.reset();
+    this.overlays.clearChildren();
     this.update(0);
+};
+
+Display.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
 };
 
 function Cursor(master) {
@@ -2272,6 +2343,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/empExplosion.png',
             'images/empFlash.png',
             'images/enemyExplosion.png',
+            'images/groundCircuit.png',
             'images/healthBar.png',
             'images/omni.png',
             'images/omniExplosion.png',
