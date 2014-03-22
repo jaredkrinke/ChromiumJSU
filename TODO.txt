@@ -1,5 +1,9 @@
 ﻿For beta 2:
-Complete more levels
+Add second boss
+Finish level 2
+Add tank
+Finish level 3
+Add a short level 0 with a ray gun as the boss?
 Allow the player to unlock/start on subsequent levels?
 
 For release candidate:

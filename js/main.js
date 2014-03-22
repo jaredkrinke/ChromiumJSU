@@ -291,6 +291,14 @@ RayGunShot.image = new Image('images/rayGunShot.png', 'yellow');
 RayGunShot.explosionImage = new Image('images/rayGunShotExplosion.png', 'orange');
 RayGunShot.prototype = Object.create(Shot.prototype);
 
+function GnatShot(x, y) {
+    Shot.call(this, x, y, GnatShot.image, 13, 13, 0, -0.55, 8.5, new ExplosionTemplate(GnatShot.explosionImage, 113, 85, 10 * 20));
+}
+
+GnatShot.image = new Image('images/tankShotFlash.png', 'purple');
+GnatShot.explosionImage = new Image('images/omniExplosion.png', 'purple');
+GnatShot.prototype = Object.create(Shot.prototype);
+
 function TankShot(x, y) {
     Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
 }
@@ -967,6 +975,90 @@ RayGun.prototype.updateGuns = function (ms) {
     }
 };
 
+function Gnat(master, x, y) {
+    Enemy.call(this, master, x, y, Gnat.shipWidth, Gnat.shipHeight, 0.14, 10, 1,
+        [new Gun(master, this, 0, -7, 1 * 20, 5 * 20, GnatShot)],
+        new ExplosionSequence([
+            [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
+        ]),
+        new AudioTemplate([['explosionBig.mp3']]));
+    this.elements = [Gnat.image];
+    this.timer = 0;
+    this.randMoveX = 0.5 + 0.5 * Math.random();
+    this.vx = 0.2;
+    this.vy = 0.1;
+}
+
+Gnat.shipWidth = 26;
+Gnat.shipHeight = 26;
+Gnat.image = new Image('images/gnat.png', 'purple', -Gnat.shipWidth / 2, Gnat.shipHeight / 2, Gnat.shipWidth, Gnat.shipHeight);
+Gnat.prototype = Object.create(Enemy.prototype);
+
+Gnat.prototype.updateTargetLocation = function (ms) {
+    this.timer += ms / 20;
+
+    // Note: This uses a different coordinate system right up until the end...
+    // TODO: Rerwrite this...
+    var deltaX = 0;
+    var deltaY = 0;
+    var randX;
+    if (this.target) {
+        deltaX = (this.target.x - this.targetX) / 640 * 22.51;
+        deltaY = (this.target.y - this.targetY) / 480 * 16.88;
+        randX = this.randMoveX;
+    } else {
+        randX = 0.75 + 0.15 * Math.random();
+    }
+
+    var s = 3.8;
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) * randX;
+    var d = 0.4 + 0.6 * ((distance + 0.2 * Math.sin(this.timer * 0.001)) / s);
+    var speed = d * 0.25 * randX;
+    var x = speed * (deltaX / distance);
+    var y = speed * (deltaY / distance);
+
+    if (distance < s) {
+        x = x * d - (1 - d) * deltaY / d;
+        y = y * d + (1 - d) * deltaX / d;
+        // TODO: Should be overall timer here, actually
+        y += 0.01 * Math.sin(this.timer * 0.001);
+    } else {
+        d = 0.97;
+        if (randX < 0.65) {
+            x = x * d + (1 - d) * deltaY / d;
+            y = y * d - (1 - d) * deltaX / d;
+        } else {
+            x = x * d - (1 - d) * deltaY / d;
+            y = y * d + (1 - d) * deltaX / d;
+        }
+    }
+
+    var tmp = randX * 0.2;
+    var vx;
+    if (Math.floor(this.timer / 8) % 2) {
+        vx = this.vx * (0.85 - tmp) + (0.2 + tmp) * (randX - 0.2) * x;
+    } else {
+        vx = this.vx;
+    }
+    vy = this.vy * (0.85 - tmp) + (0.2 + tmp) * (randX - 0.2) * y;
+
+    if (this.timer < 50) {
+        var amount = (this.timer > 20) ? (this.timer - 20) / 30 : 0;
+        this.vx = (1 - amount) * this.vx + amount * vx;
+        this.vy = (1 - amount) * this.vy + amount * vy;
+    } else {
+        this.vx = vx;
+        this.vy = vy;
+    }
+
+    // Convet back to normal coordinates and milliseconds
+    this.targetX += this.vx * 640 / 22.51 * ms / 20;
+    this.targetY += this.vy * 480 / 16.88 * ms / 20;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
+
 function Boss0(master, x, y) {
     // Create guns
     this.rayGun = new Gun(master, this, 0, -48, 20, 0, RayGunShot);
@@ -1515,7 +1607,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    //Levels.createSingleEnemyTestLevelLoader(Straight, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Gnat, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
     Levels.loadLevel1,
 ];
@@ -2343,6 +2435,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/empExplosion.png',
             'images/empFlash.png',
             'images/enemyExplosion.png',
+            'images/gnat.png',
             'images/groundCircuit.png',
             'images/healthBar.png',
             'images/omni.png',
