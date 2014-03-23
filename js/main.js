@@ -299,8 +299,8 @@ GnatShot.image = new Image('images/tankShotFlash.png', 'purple');
 GnatShot.explosionImage = new Image('images/omniExplosion.png', 'purple');
 GnatShot.prototype = Object.create(Shot.prototype);
 
-function TankShot(x, y) {
-    Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
+function TankShot(x, y, vx, vy) {
+    Shot.call(this, x, y, TankShot.image, 26, 26, (vx === undefined) ? 0 : vx, (vy === undefined) ? -1 : vy, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
 }
 
 TankShot.image = new Image('images/tankShot.png', 'yellow');
@@ -1059,13 +1059,21 @@ Gnat.prototype.updateTargetLocation = function (ms) {
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
+function TankGun(master, host, x, y, warmupPeriod) {
+    Gun.call(this, master, host, x, y, 10 * 20, 0, TankShot, undefined, warmupPeriod);
+    this.speed = 1;
+}
+
+TankGun.prototype = Object.create(Gun.prototype);
+TankGun.prototype.createShot = Gun.createAimedShot;
+
 function Tank(master, x, y) {
     // TODO: Guns
     this.straightGuns = [
         new Gun(master, this, 43, -48, 3 * 20, 0, StraightShot),
         new Gun(master, this, -43, -48, 3 * 20, 0, StraightShot)
     ];
-    this.tankGun = new Gun(master, this, 0, -15, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20));
+    this.tankGun = new TankGun(master, this, 0, -15);
 
     var guns = [this.tankGun]
     guns.concat(this.straightGuns);
