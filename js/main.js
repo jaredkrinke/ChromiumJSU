@@ -1061,10 +1061,14 @@ Gnat.prototype.updateTargetLocation = function (ms) {
 
 function Tank(master, x, y) {
     // TODO: Guns
-    var guns = [];
-    for (var i = 0; i < 18; i++) {
-        guns.push(new OmniGun(master, this, 0, 0, i * 20));
-    }
+    this.straightGuns = [
+        new Gun(master, this, 43, -48, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -43, -48, 3 * 20, 0, StraightShot)
+    ];
+    this.tankGun = new Gun(master, this, 0, -15, 10 * 20, 0, TankShot, new ExplosionTemplate(TankShot.flashImage, 28, 28, 10 * 20));
+
+    var guns = [this.tankGun]
+    guns.concat(this.straightGuns);
 
     Enemy.call(this, master, x, y, Tank.shipWidth, Tank.shipHeight, 0.043, 2000, 1000, guns, new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
@@ -1076,13 +1080,58 @@ function Tank(master, x, y) {
     ]),
     new AudioTemplate([['explosionBig.mp3']]));
 
-    this.elements = [Tank.image];
+    this.elements = [Tank.image, this.chargeImage = new Image('images/tankCharge.png', 'purple', -28, 13, 56, 56, 0)];
+    this.timer = 0;
+    this.shootSwap = 0;
+    this.steps = 0;
+    this.prefire = 0;
 }
 
 Tank.shipWidth = 108;
 Tank.shipHeight = 119;
 Tank.image = new Image('images/tank.png', 'gray', -Tank.shipWidth / 2, Tank.shipHeight / 2, Tank.shipWidth, Tank.shipHeight);
 Tank.prototype = Object.create(Enemy.prototype);
+
+Tank.prototype.updateGuns = function (ms) {
+    this.timer += ms;
+    if (this.y < 240 && this.target) {
+        var deltaX = this.target.x - this.x;
+
+        // Straight guns are fired when near the player
+        if (Math.abs(deltaX) < 114) {
+            // TODO: To be perfect, this should be done in the loop below, but it only matters with a really low framerate
+            if (this.shootSwap === 0 || this.shootSwap === 8 || this.shootSwap === 16) {
+                this.straightGuns[0].fire();
+                this.straightGuns[1].fire();
+            }
+            this.shootSwap++;
+            this.shootSwap %= 100;
+        }
+
+        // Handle guns that are controlled by frame count
+        var nextStep = Math.floor(this.timer / 20);
+        for (; this.steps < nextStep; this.steps++) {
+            if (Math.floor(this.steps / 200) % 2 === 0) {
+                var index = this.steps % 200;
+                if (index < 100) {
+                    this.prefire = index / 100;
+                } else if (index < 170) {
+                    if (this.steps % 10 === 0) {
+                        // TODO: Aim
+                        this.tankGun.fire();
+                        this.prefire = Math.max(0, this.prefire - 0.4);
+                    } else {
+                        this.prefire += 0.035;
+                    }
+                } else {
+                    this.prefire = 0;
+                }
+            }
+        }
+
+        this.chargeImage.opacity = this.prefire;
+    }
+}
 
 function Boss0(master, x, y) {
     // Create guns
@@ -2494,6 +2543,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/straightShotExplosion.png',
             'images/superShieldBar.png',
             'images/tank.png',
+            'images/tankCharge.png',
             'images/tankShot.png',
             'images/tankShotExplosion.png',
             'images/tankShotFlash.png',
