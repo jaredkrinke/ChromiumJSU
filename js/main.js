@@ -1059,6 +1059,31 @@ Gnat.prototype.updateTargetLocation = function (ms) {
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
+function Tank(master, x, y) {
+    // TODO: Guns
+    var guns = [];
+    for (var i = 0; i < 18; i++) {
+        guns.push(new OmniGun(master, this, 0, 0, i * 20));
+    }
+
+    Enemy.call(this, master, x, y, Tank.shipWidth, Tank.shipHeight, 0.043, 2000, 1000, guns, new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)]
+    ]),
+    new AudioTemplate([['explosionBig.mp3']]));
+
+    this.elements = [Tank.image];
+}
+
+Tank.shipWidth = 108;
+Tank.shipHeight = 119;
+Tank.image = new Image('images/tank.png', 'gray', -Tank.shipWidth / 2, Tank.shipHeight / 2, Tank.shipWidth, Tank.shipHeight);
+Tank.prototype = Object.create(Enemy.prototype);
+
 function Boss0(master, x, y) {
     // Create guns
     this.rayGun = new Gun(master, this, 0, -48, 20, 0, RayGunShot);
@@ -1607,7 +1632,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    //Levels.createSingleEnemyTestLevelLoader(Gnat, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Tank, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
     Levels.loadLevel1,
 ];
@@ -2468,6 +2493,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/straightShot.png',
             'images/straightShotExplosion.png',
             'images/superShieldBar.png',
+            'images/tank.png',
             'images/tankShot.png',
             'images/tankShotExplosion.png',
             'images/tankShotFlash.png',
