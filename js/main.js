@@ -1093,6 +1093,7 @@ function Tank(master, x, y) {
     this.shootSwap = 0;
     this.steps = 0;
     this.prefire = 0;
+    this.lastMoveY = 0;
 }
 
 Tank.shipWidth = 108;
@@ -1107,7 +1108,7 @@ Tank.prototype.updateGuns = function (ms) {
 
         // Straight guns are fired when near the player
         if (Math.abs(deltaX) < 114) {
-            // TODO: To be perfect, this should be done in the loop below, but it only matters with a really low framerate
+            // TODO: This should be done in the loop below, but it only matters with a really low framerate
             if (this.shootSwap === 0 || this.shootSwap === 8 || this.shootSwap === 16) {
                 this.straightGuns[0].fire();
                 this.straightGuns[1].fire();
@@ -1119,7 +1120,7 @@ Tank.prototype.updateGuns = function (ms) {
         // Handle guns that are controlled by frame count
         var nextStep = Math.floor(this.timer / 20);
         for (; this.steps < nextStep; this.steps++) {
-            if (Math.floor(this.steps / 200) % 2 === 0) {
+            if (Math.floor(this.steps / 200) % 2 === 1) {
                 var index = this.steps % 200;
                 if (index < 100) {
                     this.prefire = index / 100;
@@ -1140,6 +1141,36 @@ Tank.prototype.updateGuns = function (ms) {
         this.chargeImage.opacity = this.prefire;
     }
 }
+
+Tank.prototype.updateTargetLocation = function (ms) {
+    this.timer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.targetX;
+        var deltaXMagnitude = Math.abs(deltaX);
+        var speed = 0.057;
+        if (deltaXMagnitude < 227) {
+            speed *= deltaXMagnitude / 227;
+        }
+
+        // Adjust slowly
+        this.speed = 0.99 * this.speed + 0.01 * speed;
+
+        // Adjust speed based on vertical position
+        if (this.targetY < 0) {
+            this.speed = 0;
+        } else if (this.targetY < 85) {
+            this.speed *= 0.99;
+        }
+
+        // Adjust horizontal position a small amount
+        this.targetX += 20 / 1000 * Math.sin(this.timer / 10000 * Math.PI) * ms;
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
 
 function Boss0(master, x, y) {
     // Create guns
