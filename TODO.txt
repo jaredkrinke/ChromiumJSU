@@ -1,5 +1,4 @@
 ﻿For beta 2:
-Finish tank
 Add second boss
 Finish level 2
 Add tank
