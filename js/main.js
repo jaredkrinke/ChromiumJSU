@@ -292,7 +292,7 @@ RayGunShot.explosionImage = new Image('images/rayGunShotExplosion.png', 'orange'
 RayGunShot.prototype = Object.create(Shot.prototype);
 
 function GnatShot(x, y) {
-    Shot.call(this, x, y, GnatShot.image, 13, 13, 0, -0.55, 8.5, new ExplosionTemplate(GnatShot.explosionImage, 113, 85, 10 * 20));
+    Shot.call(this, x, y, GnatShot.image, 13, 13, 0, -0.55, 6, new ExplosionTemplate(GnatShot.explosionImage, 113, 85, 10 * 20));
 }
 
 GnatShot.image = new Image('images/tankShotFlash.png', 'purple');
@@ -975,7 +975,7 @@ RayGun.prototype.updateGuns = function (ms) {
     }
 };
 
-function Gnat(master, x, y) {
+function Gnat(master, x, y, moveTarget) {
     Enemy.call(this, master, x, y, Gnat.shipWidth, Gnat.shipHeight, 0.14, 10, 1,
         [new Gun(master, this, 0, -7, 1 * 20, 5 * 20, GnatShot)],
         new ExplosionSequence([
@@ -987,12 +987,23 @@ function Gnat(master, x, y) {
     this.randMoveX = 0.5 + 0.5 * Math.random();
     this.vx = 0.2;
     this.vy = 0.1;
+    this.moveTarget = moveTarget ? moveTarget : this.target;
 }
 
 Gnat.shipWidth = 26;
 Gnat.shipHeight = 26;
 Gnat.image = new Image('images/gnat.png', 'purple', -Gnat.shipWidth / 2, Gnat.shipHeight / 2, Gnat.shipWidth, Gnat.shipHeight);
 Gnat.prototype = Object.create(Enemy.prototype);
+
+Gnat.prototype.updateGuns = function (ms) {
+    if (this.target) {
+        var deltaX = this.target.x - this.targetX;
+        var deltaY = this.target.y - this.targetY;
+        this.guns[0].setFiring(Math.abs(deltaX) < 57 && deltaY < 0);
+    } else {
+        this.guns[0].setFiring(false);
+    }
+};
 
 Gnat.prototype.updateTargetLocation = function (ms) {
     this.timer += ms / 20;
@@ -1002,9 +1013,9 @@ Gnat.prototype.updateTargetLocation = function (ms) {
     var deltaX = 0;
     var deltaY = 0;
     var randX;
-    if (this.target) {
-        deltaX = (this.target.x - this.targetX) / 640 * 22.51;
-        deltaY = (this.target.y - this.targetY) / 480 * 16.88;
+    if (this.moveTarget) {
+        deltaX = (this.moveTarget.x - this.targetX) / 640 * 22.51;
+        deltaY = (this.moveTarget.y - this.targetY) / 480 * 16.88;
         randX = this.randMoveX;
     } else {
         randX = 0.75 + 0.15 * Math.random();
@@ -1395,9 +1406,18 @@ Boss1.prototype.updateGuns = function (ms) {
                 // TODO: Decrease pre-fire
             }
 
-            if (Math.floor(this.steps / 512) % 2 === 0) {
-                if (Math.floor(this.steps / 64) % 2 === 0 && this.steps % 5 === 0) {
-                    // TODO: Add gnat
+            if (this.steps > 600) {
+                var shitedSteps = this.steps - 600;
+                if (Math.floor(shitedSteps / 512) % 2 === 0) {
+                    if (Math.floor(shitedSteps / 128) % 2 === 0 && shitedSteps % 20 === 0) {
+                        // Put an upper limit on the number of gnats to release
+                        if (this.master.getEnemyCount() < 25) {
+                            // Release a gnat
+                            var x = this.x + 48;
+                            var y = this.y + 34;
+                            this.master.addEnemy(new Gnat(this.master, x, y, this));
+                        }
+                    }
                 }
             }
         }
@@ -1829,7 +1849,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 Levels.levels = [
     // TODO: Use real levels, of course...
     //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
-    //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
+    //Levels.createSingleEnemyTestLevelLoader(Gnat, 'circuit'),
     Levels.loadLevel1,
 ];
 
@@ -1918,6 +1938,10 @@ Master.prototype.addEnemy = function (enemy) {
 
 Master.prototype.removeEnemy = function (enemy) {
     this.enemies.removeChild(enemy);
+};
+
+Master.prototype.getEnemyCount = function () {
+    return this.enemies.getChildCount();
 };
 
 Master.prototype.addEnemyShot = function (shot) {

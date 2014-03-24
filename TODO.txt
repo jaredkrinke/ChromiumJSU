@@ -1,11 +1,11 @@
 ﻿For beta 2:
-Add second boss
+Second boss visual effects
 Finish level 2
-Add tank
 Finish level 3
 Add a short level 0 with a ray gun or tank as the boss?
 Allow the player to unlock/start on subsequent levels?
-Did I miss pre-fire for Boss0?
+Pre-fire for first boss
+Retargeting for second boss gnats?
 
 For release candidate:
 Handle loading errors
