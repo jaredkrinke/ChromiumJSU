@@ -5,6 +5,7 @@ Add tank
 Finish level 3
 Add a short level 0 with a ray gun or tank as the boss?
 Allow the player to unlock/start on subsequent levels?
+Did I miss pre-fire for Boss0?
 
 For release candidate:
 Handle loading errors

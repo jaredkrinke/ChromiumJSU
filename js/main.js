@@ -1172,6 +1172,24 @@ Tank.prototype.updateTargetLocation = function (ms) {
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
+function createBossExplosion(width, height) {
+    var explosions = [];
+    var explosionDuration = 1500;
+    var explosionFrequency = 5;
+
+    explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
+
+    for (var i = 0; i < explosionDuration; i += explosionFrequency) {
+        var size = (Math.random() / 2 + 0.5) * width;
+        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
+
+        // Decrease frequency over time
+        explosionFrequency *= 1.1;
+    }
+
+    return explosions;
+}
+
 function Boss0(master, x, y) {
     // Create guns
     this.rayGun = new Gun(master, this, 0, -48, 20, 0, RayGunShot);
@@ -1195,23 +1213,9 @@ function Boss0(master, x, y) {
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
 
     // Create explosion sequence
-    var width = Boss0.shipWidth;
-    var height = Boss0.shipHeight;
-    var explosions = [];
-    var explosionDuration = 1500;
-    var explosionFrequency = 5;
+    var explosions = createBossExplosion(Boss0.shipWidth, Boss0.shipHeight);
 
-    explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
-
-    for (var i = 0; i < explosionDuration; i += explosionFrequency) {
-        var size = (Math.random() / 2 + 0.5) * width;
-        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
-
-        // Decrease frequency over time
-        explosionFrequency *= 1.1;
-    }
-
-    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+    Enemy.call(this, master, x, y, Boss0.shipWidth, Boss0.shipHeight, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
         ['explosionHuge.mp3'],
         ['explosion.mp3', 200],
         ['explosion.mp3', 600],
@@ -1308,13 +1312,117 @@ Boss0.prototype.updateTargetLocation = function (ms) {
             deltaY *= deltaY / approach;
         }
 
-        deltaX += 143 * Math.sin(this.moveTimer / 10);
+        deltaX += 143 * Math.sin(this.moveTimer * 0.005);
 
         // Adjust movement slowly
         this.lastMoveX *= 0.98;
         this.lastMoveX += (0.0005 * deltaX);
         this.lastMoveY *= 0.9;
         this.lastMoveY += 0.001 * deltaY;
+
+        this.targetX += this.lastMoveX;
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
+
+function Boss1(master, x, y) {
+    // Create guns
+    this.straightGunsA = [
+        new Gun(master, this, 16, -34, 3 * 20, 0, StraightShot),
+        new Gun(master, this, 16, -48, 3 * 20, 0, StraightShot),
+    ];
+    this.straightGunsB = [
+        new Gun(master, this, -35, -35, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -35, -20, 3 * 20, 0, StraightShot),
+    ];
+    var guns = [];
+    guns.concat(this.straightGunsA, this.straightGunsB);
+
+    // Create explosion sequence
+    var explosions = createBossExplosion(Boss1.shipWidth, Boss1.shipHeight);
+
+    Enemy.call(this, master, x, y, Boss1.shipWidth, Boss1.shipHeight, 0.028, 10000, 1000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+        ['explosionHuge.mp3'],
+        ['explosion.mp3', 200],
+        ['explosion.mp3', 600],
+        ['explosion.mp3', 800],
+        ['explosionBig.mp3', 1000]
+    ]));
+
+    this.moveTimer = 0;
+    this.lastMoveX = 0;
+    this.lastMoveY = 0;
+
+    this.timer = 0;
+    this.steps = 0;
+    this.straightCounter = 0;
+    this.shootSwap = false;
+    this.elements = [Boss1.image];
+    // TODO: Pre-fire
+}
+
+Boss1.shipWidth = 148;
+Boss1.shipHeight = 131;
+Boss1.image = new Image('images/boss1.png', 'cyan', -Boss1.shipWidth / 2, Boss1.shipHeight / 2, Boss1.shipWidth, Boss1.shipHeight);
+Boss1.prototype = Object.create(Enemy.prototype);
+
+Boss1.prototype.updateGuns = function (ms) {
+    this.timer += ms;
+    if (this.y < 240 && this.target) {
+        var deltaX = this.target.x - this.x;
+        var near = Math.abs(deltaX) < 142;
+
+        // Handle guns that are controlled by frame count
+        var nextStep = Math.floor(this.timer / 20);
+        for (; this.steps < nextStep; this.steps++) {
+            if (near) {
+                // TODO: Pre-fire
+                if (this.steps % 6 === 0) {
+                    this.shootSwap = !this.shootSwap;
+                    if (this.shootSwap) {
+                        this.straightGunsA[0].fire();
+                        this.straightGunsA[1].fire();
+                    } else {
+                        this.straightGunsB[0].fire();
+                        this.straightGunsB[1].fire();
+                    }
+                }
+            } else {
+                // TODO: Decrease pre-fire
+            }
+
+            if (Math.floor(this.steps / 512) % 2 === 0) {
+                if (Math.floor(this.steps / 64) % 2 === 0 && this.steps % 5 === 0) {
+                    // TODO: Add gnat
+                }
+            }
+        }
+    }
+};
+
+Boss1.prototype.updateTargetLocation = function (ms) {
+    this.moveTimer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.x;
+        var deltaY = this.target.y - this.y;
+        var approach = 256;
+
+        if (Math.abs(deltaY) < (approach + 57 * Math.sin(this.moveTimer * 0.0025))) {
+            deltaY *= deltaY / approach;
+        }
+
+        deltaX += 143 * Math.sin(this.moveTimer * 0.005);
+
+        // Adjust movement slowly
+        // TODO: Slow down movement when gnats are being added?
+        this.lastMoveX *= 0.98;
+        this.lastMoveX += (0.001 * deltaX);
+        this.lastMoveY *= 0.9;
+        this.lastMoveY += 0.002 * deltaY;
 
         this.targetX += this.lastMoveX;
     }
@@ -1720,7 +1828,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    //Levels.createSingleEnemyTestLevelLoader(Tank, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Straight, 'circuit'),
     Levels.loadLevel1,
 ];
@@ -2540,6 +2648,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/ammoBar2.png',
             'images/blink.png',
             'images/boss0.png',
+            'images/boss1.png',
             'images/bullet.png',
             'images/bulletExplosion.png',
             'images/bulletFlash.png',
