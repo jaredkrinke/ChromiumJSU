@@ -1857,10 +1857,10 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
-    Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Gnat, 'circuit'),
-    //Levels.loadLevel1,
+    Levels.loadLevel1,
 ];
 
 function Master(layer) {
