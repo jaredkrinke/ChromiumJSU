@@ -1243,7 +1243,11 @@ function Boss0(master, x, y) {
     this.straightCounter = 0;
     this.ammoSpeed = 0.5;
     this.omniV = [0, -this.ammoSpeed];
-    this.elements = [Boss0.image];
+    this.prefire = 0;
+    this.chargeImages = [];
+    this.chargeImages[0] = new Image('images/tankCharge.png', 'purple', -59, 15, 56, 56, 0);
+    this.chargeImages[1] = new Image('images/tankCharge.png', 'purple', 3, 15, 56, 56, 0);
+    this.elements = [Boss0.image].concat(this.chargeImages);
 
     // Use boss's aim for omni shots
     var boss = this;
@@ -1302,13 +1306,22 @@ Boss0.prototype.updateGuns = function (ms) {
                         this.omniGuns[0].fire()
                         this.omniGuns[1].fire()
                     }
+                    this.prefire = (this.steps % 100) / 100;
                 } else if (this.steps % 10 === 0) {
                     // Fire tank guns
                     this.tankGuns[0].fire();
                     this.tankGuns[1].fire();
+                    this.prefire = Math.max(0, this.prefire - 0.4);
+                } else {
+                    this.prefire += 0.035;
                 }
+            } else {
+                this.prefire = Math.max(0, this.prefire - 0.02);
             }
         }
+
+        this.chargeImages[0].opacity = this.prefire;
+        this.chargeImages[1].opacity = this.prefire;
     }
 };
 
@@ -1844,9 +1857,10 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 
 Levels.levels = [
     // TODO: Use real levels, of course...
+    Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Gnat, 'circuit'),
-    Levels.loadLevel1,
+    //Levels.loadLevel1,
 ];
 
 function Master(layer) {

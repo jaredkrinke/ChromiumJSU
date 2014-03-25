@@ -3,7 +3,6 @@ Finish level 2
 Finish level 3
 Add a short level 0 with a ray gun or tank as the boss?
 Allow the player to unlock/start on subsequent levels?
-Pre-fire for first boss
 Retargeting for second boss gnats?
 
 For release candidate:
