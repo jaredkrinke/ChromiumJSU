@@ -1,7 +1,6 @@
 ﻿For beta 2:
-Finish level 2
-Finish level 3
-Add a short level 0 with a ray gun or tank as the boss?
+Add level 2 (with tank as boss)
+Add level 4
 Allow the player to unlock/start on subsequent levels?
 Retargeting for second boss gnats?
 

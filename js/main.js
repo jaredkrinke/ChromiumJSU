@@ -923,6 +923,7 @@ function RayGun(master, x, y) {
     this.movementFactor = 0.5 + Math.random() / 2;
     this.lastMoveX = 0;
     this.lastMoveY = 0;
+    this.limitY = -640;
 }
 
 RayGun.shipWidth = 68;
@@ -958,7 +959,9 @@ RayGun.prototype.updateTargetLocation = function (ms) {
         this.targetX = this.targetX + (this.movementFactor * this.lastMoveX + dx);
     }
 
-    this.targetY += this.lastMoveY - this.speed * ms;
+    if (this.targetY > this.limitY) {
+        this.targetY += this.lastMoveY - this.speed * ms;
+    }
 
     // Horizontal bounds
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
@@ -974,6 +977,12 @@ RayGun.prototype.updateGuns = function (ms) {
         }
     }
 };
+
+function RayGunBoss(master, x, y) {
+    RayGun.call(this, master, x, y);
+    this.limitY = 0;
+}
+RayGunBoss.prototype = Object.create(RayGun.prototype);
 
 function Gnat(master, x, y, moveTarget) {
     Enemy.call(this, master, x, y, Gnat.shipWidth, Gnat.shipHeight, 0.14, 10, 1,
@@ -1694,9 +1703,10 @@ Level.prototype.addRayGunWave = function (start, duration) {
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
 };
 
-Level.prototype.addBoss0Wave = function (start, duration) {
-    var end = start + duration;
-    this.addWave(Boss0, start, end, 0, 426, 5000 * 20, 0, 4);
+Level.createBossWaveFactory = function (enemy) {
+    return function (start) {
+        this.addWave(enemy, start, start + 100, undefined, undefined, 200, 0, 0, 0);
+    }
 };
 
 // TODO: xRand and xJitter are actually two names for the same thing; converge these
@@ -1771,6 +1781,65 @@ Level.prototype.update = function (ms) {
 var Levels = {};
 
 Levels.loadLevel1 = function (master) {
+    var totalTime = 60000;
+    var waveDuration = 400;
+    time = 400 * 20;
+    var waves = [];
+
+    // Always add the same first wave
+    waves.push({
+        factory: Level.prototype.addStraightWave,
+        start: 1,
+        duration: time,
+        density: 0.4
+    });
+
+    // Now add random waves
+    // TODO: Simplify the creation of levels...
+    // TODO: Share more code between levels?
+    while (time < totalTime - 1000 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.7) {
+            factory = Level.prototype.addStraightWave;
+        } else {
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // Boss
+    waves.push({
+        factory: Level.createBossWaveFactory(RayGunBoss),
+        start: totalTime + 75 * 20,
+        duration: 0
+    });
+
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'metal', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
+Levels.loadLevel2 = function (master) {
     var totalTime = 12000 * 20;
     var waveDuration = 500;
     time = 600 * 20;
@@ -1829,14 +1898,14 @@ Levels.loadLevel1 = function (master) {
 
     // Boss
     waves.push({
-        factory: Level.prototype.addBoss0Wave,
+        factory: Level.createBossWaveFactory(Boss0),
         start: totalTime + 75 * 20,
         duration: (1000 - 75) * 20
     });
 
 
     // Ammunition and power-ups
-    var level = new Level(master, 'metal', waves);
+    var level = new Level(master, 'circuit', waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
@@ -1859,8 +1928,9 @@ Levels.levels = [
     // TODO: Use real levels, of course...
     //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
-    //Levels.createSingleEnemyTestLevelLoader(Gnat, 'circuit'),
+    //Levels.createSingleEnemyTestLevelLoader(RayGunBoss, 'circuit'),
     Levels.loadLevel1,
+    Levels.loadLevel2,
 ];
 
 function Master(layer) {
