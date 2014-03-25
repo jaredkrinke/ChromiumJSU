@@ -1,5 +1,4 @@
 ﻿For beta 2:
-Second boss visual effects
 Finish level 2
 Finish level 3
 Add a short level 0 with a ray gun or tank as the boss?

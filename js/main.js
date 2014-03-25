@@ -1373,7 +1373,6 @@ function Boss1(master, x, y) {
     this.straightCounter = 0;
     this.shootSwap = false;
     this.elements = [Boss1.image];
-    // TODO: Pre-fire
 }
 
 Boss1.shipWidth = 148;
@@ -1391,7 +1390,6 @@ Boss1.prototype.updateGuns = function (ms) {
         var nextStep = Math.floor(this.timer / 20);
         for (; this.steps < nextStep; this.steps++) {
             if (near) {
-                // TODO: Pre-fire
                 if (this.steps % 6 === 0) {
                     this.shootSwap = !this.shootSwap;
                     if (this.shootSwap) {
@@ -1402,8 +1400,6 @@ Boss1.prototype.updateGuns = function (ms) {
                         this.straightGunsB[1].fire();
                     }
                 }
-            } else {
-                // TODO: Decrease pre-fire
             }
 
             if (this.steps > 600) {
