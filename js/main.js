@@ -1795,9 +1795,7 @@ Levels.loadLevel1 = function (master) {
     });
 
     // Now add random waves
-    // TODO: Simplify the creation of levels...
-    // TODO: Share more code between levels?
-    while (time < totalTime - 1000 * 20) {
+    while (time < totalTime - 500 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
         var r = Math.random();
@@ -1840,20 +1838,67 @@ Levels.loadLevel1 = function (master) {
 };
 
 Levels.loadLevel2 = function (master) {
-    var totalTime = 12000 * 20;
+    var totalTime = 120000;
     var waveDuration = 500;
-    time = 600 * 20;
+    time = 50 * 20;
     var waves = [];
 
-    // Always add the same first wave
+    while (time < totalTime - 500 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.15) {
+            // 15% chance
+            factory = Level.prototype.addStraightArrowWave;
+        } else if (r < 0.25) {
+            // 10% chance
+            factory = Level.prototype.addOmniArrowWave;
+        } else if (r > 0.6) {
+            // 60% chance
+            factory = Level.prototype.addStraightWave;
+        } else {
+            // 15% chance
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // Boss
     waves.push({
-        factory: Level.prototype.addStraightWave,
-        start: 1,
-        duration: time,
-        density: 0.4
+        factory: Level.createBossWaveFactory(Tank),
+        start: totalTime + 75 * 20,
+        duration: (1000 - 75) * 20
     });
 
-    // Now add random waves
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'metal', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
+Levels.loadLevel3 = function (master) {
+    var totalTime = 12000 * 20;
+    var waveDuration = 500;
+    time = 50 * 20;
+    var waves = [];
+
     while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
@@ -1931,6 +1976,7 @@ Levels.levels = [
     //Levels.createSingleEnemyTestLevelLoader(RayGunBoss, 'circuit'),
     Levels.loadLevel1,
     Levels.loadLevel2,
+    Levels.loadLevel3,
 ];
 
 function Master(layer) {

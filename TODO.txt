@@ -1,8 +1,7 @@
-﻿For beta 2:
-Add level 2 (with tank as boss)
+﻿For beta 3:
 Add level 4
 Allow the player to unlock/start on subsequent levels?
-Retargeting for second boss gnats?
+Retargeting for last boss gnats?
 
 For release candidate:
 Handle loading errors
