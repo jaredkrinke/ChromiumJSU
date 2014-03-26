@@ -1795,7 +1795,7 @@ Levels.loadLevel1 = function (master) {
     });
 
     // Now add random waves
-    while (time < totalTime - 500 * 20) {
+    while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
         var r = Math.random();
@@ -1843,7 +1843,7 @@ Levels.loadLevel2 = function (master) {
     time = 50 * 20;
     var waves = [];
 
-    while (time < totalTime - 500 * 20) {
+    while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
         var r = Math.random();
