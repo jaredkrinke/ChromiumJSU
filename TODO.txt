@@ -1,6 +1,7 @@
-﻿For beta 2:
-Complete more levels
-Add level transitions
+﻿For beta 3:
+Add level 4
+Allow the player to unlock/start on subsequent levels?
+Retargeting for last boss gnats?
 
 For release candidate:
 Handle loading errors

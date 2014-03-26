@@ -18,10 +18,12 @@ Timer.prototype.update = function (ms) {
     }
 };
 
-function Message(text) {
+function Message(text, period) {
     Entity.call(this);
     this.timer = 0;
     this.opacity = 0;
+    this.period = Message.fadeInPeriod + period;
+    this.fadeOutPeriod = 2 * Message.fadeInPeriod + period;
     this.elements = [new Text(text, Message.font, 0, 0, 'center')];
 }
 
@@ -31,8 +33,16 @@ Message.fadeInPeriod = 3000;
 
 Message.prototype.update = function (ms) {
     if (this.timer < Message.fadeInPeriod) {
+        // Fade in
         this.timer += ms;
         this.opacity = Math.min(1, this.timer / Message.fadeInPeriod);
+    } else if (this.period !== undefined && this.timer < this.period) {
+        // Persist
+        this.timer += ms;
+    } else if (this.period !== undefined && this.timer < this.fadeOutPeriod) {
+        // Fade out
+        this.timer += ms;
+        this.opacity = Math.max(0, 1 - (this.timer - this.period) / Message.fadeInPeriod);
     }
 };
 
@@ -281,8 +291,16 @@ RayGunShot.image = new Image('images/rayGunShot.png', 'yellow');
 RayGunShot.explosionImage = new Image('images/rayGunShotExplosion.png', 'orange');
 RayGunShot.prototype = Object.create(Shot.prototype);
 
-function TankShot(x, y) {
-    Shot.call(this, x, y, TankShot.image, 26, 26, 0, -1, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
+function GnatShot(x, y) {
+    Shot.call(this, x, y, GnatShot.image, 13, 13, 0, -0.55, 6, new ExplosionTemplate(GnatShot.explosionImage, 113, 85, 10 * 20));
+}
+
+GnatShot.image = new Image('images/tankShotFlash.png', 'purple');
+GnatShot.explosionImage = new Image('images/omniExplosion.png', 'purple');
+GnatShot.prototype = Object.create(Shot.prototype);
+
+function TankShot(x, y, vx, vy) {
+    Shot.call(this, x, y, TankShot.image, 26, 26, (vx === undefined) ? 0 : vx, (vy === undefined) ? -1 : vy, 100, new ExplosionTemplate(TankShot.explosionImage, 97, 97, 10 * 20));
 }
 
 TankShot.image = new Image('images/tankShot.png', 'yellow');
@@ -905,6 +923,7 @@ function RayGun(master, x, y) {
     this.movementFactor = 0.5 + Math.random() / 2;
     this.lastMoveX = 0;
     this.lastMoveY = 0;
+    this.limitY = -640;
 }
 
 RayGun.shipWidth = 68;
@@ -940,7 +959,9 @@ RayGun.prototype.updateTargetLocation = function (ms) {
         this.targetX = this.targetX + (this.movementFactor * this.lastMoveX + dx);
     }
 
-    this.targetY += this.lastMoveY - this.speed * ms;
+    if (this.targetY > this.limitY) {
+        this.targetY += this.lastMoveY - this.speed * ms;
+    }
 
     // Horizontal bounds
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
@@ -956,6 +977,238 @@ RayGun.prototype.updateGuns = function (ms) {
         }
     }
 };
+
+function RayGunBoss(master, x, y) {
+    RayGun.call(this, master, x, y);
+    this.limitY = 0;
+}
+RayGunBoss.prototype = Object.create(RayGun.prototype);
+
+function Gnat(master, x, y, moveTarget) {
+    Enemy.call(this, master, x, y, Gnat.shipWidth, Gnat.shipHeight, 0.14, 10, 1,
+        [new Gun(master, this, 0, -7, 1 * 20, 5 * 20, GnatShot)],
+        new ExplosionSequence([
+            [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
+        ]),
+        new AudioTemplate([['explosionBig.mp3']]));
+    this.elements = [Gnat.image];
+    this.timer = 0;
+    this.randMoveX = 0.5 + 0.5 * Math.random();
+    this.vx = 0.2;
+    this.vy = 0.1;
+    this.moveTarget = moveTarget ? moveTarget : this.target;
+}
+
+Gnat.shipWidth = 26;
+Gnat.shipHeight = 26;
+Gnat.image = new Image('images/gnat.png', 'purple', -Gnat.shipWidth / 2, Gnat.shipHeight / 2, Gnat.shipWidth, Gnat.shipHeight);
+Gnat.prototype = Object.create(Enemy.prototype);
+
+Gnat.prototype.updateGuns = function (ms) {
+    if (this.target) {
+        var deltaX = this.target.x - this.targetX;
+        var deltaY = this.target.y - this.targetY;
+        this.guns[0].setFiring(Math.abs(deltaX) < 57 && deltaY < 0);
+    } else {
+        this.guns[0].setFiring(false);
+    }
+};
+
+Gnat.prototype.updateTargetLocation = function (ms) {
+    this.timer += ms / 20;
+
+    // Note: This uses a different coordinate system right up until the end...
+    // TODO: Rerwrite this...
+    var deltaX = 0;
+    var deltaY = 0;
+    var randX;
+    if (this.moveTarget) {
+        deltaX = (this.moveTarget.x - this.targetX) / 640 * 22.51;
+        deltaY = (this.moveTarget.y - this.targetY) / 480 * 16.88;
+        randX = this.randMoveX;
+    } else {
+        randX = 0.75 + 0.15 * Math.random();
+    }
+
+    var s = 3.8;
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) * randX;
+    var d = 0.4 + 0.6 * ((distance + 0.2 * Math.sin(this.timer * 0.001)) / s);
+    var speed = d * 0.25 * randX;
+    var x = speed * (deltaX / distance);
+    var y = speed * (deltaY / distance);
+
+    if (distance < s) {
+        x = x * d - (1 - d) * deltaY / d;
+        y = y * d + (1 - d) * deltaX / d;
+        // TODO: Should be overall timer here, actually
+        y += 0.01 * Math.sin(this.timer * 0.001);
+    } else {
+        d = 0.97;
+        if (randX < 0.65) {
+            x = x * d + (1 - d) * deltaY / d;
+            y = y * d - (1 - d) * deltaX / d;
+        } else {
+            x = x * d - (1 - d) * deltaY / d;
+            y = y * d + (1 - d) * deltaX / d;
+        }
+    }
+
+    var tmp = randX * 0.2;
+    var vx;
+    if (Math.floor(this.timer / 8) % 2) {
+        vx = this.vx * (0.85 - tmp) + (0.2 + tmp) * (randX - 0.2) * x;
+    } else {
+        vx = this.vx;
+    }
+    vy = this.vy * (0.85 - tmp) + (0.2 + tmp) * (randX - 0.2) * y;
+
+    if (this.timer < 50) {
+        var amount = (this.timer > 20) ? (this.timer - 20) / 30 : 0;
+        this.vx = (1 - amount) * this.vx + amount * vx;
+        this.vy = (1 - amount) * this.vy + amount * vy;
+    } else {
+        this.vx = vx;
+        this.vy = vy;
+    }
+
+    // Convet back to normal coordinates and milliseconds
+    this.targetX += this.vx * 640 / 22.51 * ms / 20;
+    this.targetY += this.vy * 480 / 16.88 * ms / 20;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
+
+function TankGun(master, host, x, y, warmupPeriod) {
+    Gun.call(this, master, host, x, y, 10 * 20, 0, TankShot, undefined, warmupPeriod);
+    this.speed = 1;
+}
+
+TankGun.prototype = Object.create(Gun.prototype);
+TankGun.prototype.createShot = Gun.createAimedShot;
+
+function Tank(master, x, y) {
+    // TODO: Guns
+    this.straightGuns = [
+        new Gun(master, this, 43, -48, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -43, -48, 3 * 20, 0, StraightShot)
+    ];
+    this.tankGun = new TankGun(master, this, 0, -15);
+
+    var guns = [this.tankGun]
+    guns.concat(this.straightGuns);
+
+    Enemy.call(this, master, x, y, Tank.shipWidth, Tank.shipHeight, 0.043, 2000, 1000, guns, new ExplosionSequence([
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77)],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
+            [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), -6, , -11],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 5 * 20), 16],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 15 * 20), -14, 6],
+            [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 20 * 20)]
+    ]),
+    new AudioTemplate([['explosionBig.mp3']]));
+
+    this.elements = [Tank.image, this.chargeImage = new Image('images/tankCharge.png', 'purple', -28, 13, 56, 56, 0)];
+    this.timer = 0;
+    this.shootSwap = 0;
+    this.steps = 0;
+    this.prefire = 0;
+    this.lastMoveY = 0;
+}
+
+Tank.shipWidth = 108;
+Tank.shipHeight = 119;
+Tank.image = new Image('images/tank.png', 'gray', -Tank.shipWidth / 2, Tank.shipHeight / 2, Tank.shipWidth, Tank.shipHeight);
+Tank.prototype = Object.create(Enemy.prototype);
+
+Tank.prototype.updateGuns = function (ms) {
+    this.timer += ms;
+    if (this.y < 240 && this.target) {
+        var deltaX = this.target.x - this.x;
+
+        // Straight guns are fired when near the player
+        if (Math.abs(deltaX) < 114) {
+            // TODO: This should be done in the loop below, but it only matters with a really low framerate
+            if (this.shootSwap === 0 || this.shootSwap === 8 || this.shootSwap === 16) {
+                this.straightGuns[0].fire();
+                this.straightGuns[1].fire();
+            }
+            this.shootSwap++;
+            this.shootSwap %= 100;
+        }
+
+        // Handle guns that are controlled by frame count
+        var nextStep = Math.floor(this.timer / 20);
+        for (; this.steps < nextStep; this.steps++) {
+            if (Math.floor(this.steps / 200) % 2 === 1) {
+                var index = this.steps % 200;
+                if (index < 100) {
+                    this.prefire = index / 100;
+                } else if (index < 170) {
+                    if (this.steps % 10 === 0) {
+                        // TODO: Aim
+                        this.tankGun.fire();
+                        this.prefire = Math.max(0, this.prefire - 0.4);
+                    } else {
+                        this.prefire += 0.035;
+                    }
+                } else {
+                    this.prefire = 0;
+                }
+            }
+        }
+
+        this.chargeImage.opacity = this.prefire;
+    }
+}
+
+Tank.prototype.updateTargetLocation = function (ms) {
+    this.timer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.targetX;
+        var deltaXMagnitude = Math.abs(deltaX);
+        var speed = 0.057;
+        if (deltaXMagnitude < 227) {
+            speed *= deltaXMagnitude / 227;
+        }
+
+        // Adjust slowly
+        this.speed = 0.99 * this.speed + 0.01 * speed;
+
+        // Adjust speed based on vertical position
+        if (this.targetY < 0) {
+            this.speed = 0;
+        } else if (this.targetY < 85) {
+            this.speed *= 0.99;
+        }
+
+        // Adjust horizontal position a small amount
+        this.targetX += 20 / 1000 * Math.sin(this.timer / 10000 * Math.PI) * ms;
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
+
+function createBossExplosion(width, height) {
+    var explosions = [];
+    var explosionDuration = 1500;
+    var explosionFrequency = 5;
+
+    explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
+
+    for (var i = 0; i < explosionDuration; i += explosionFrequency) {
+        var size = (Math.random() / 2 + 0.5) * width;
+        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
+
+        // Decrease frequency over time
+        explosionFrequency *= 1.1;
+    }
+
+    return explosions;
+}
 
 function Boss0(master, x, y) {
     // Create guns
@@ -980,23 +1233,9 @@ function Boss0(master, x, y) {
     guns.concat(this.straightGuns, this.omniGuns, this.tankGuns);
 
     // Create explosion sequence
-    var width = Boss0.shipWidth;
-    var height = Boss0.shipHeight;
-    var explosions = [];
-    var explosionDuration = 1500;
-    var explosionFrequency = 5;
+    var explosions = createBossExplosion(Boss0.shipWidth, Boss0.shipHeight);
 
-    explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
-
-    for (var i = 0; i < explosionDuration; i += explosionFrequency) {
-        var size = (Math.random() / 2 + 0.5) * width;
-        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
-
-        // Decrease frequency over time
-        explosionFrequency *= 1.1;
-    }
-
-    Enemy.call(this, master, x, y, width, height, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+    Enemy.call(this, master, x, y, Boss0.shipWidth, Boss0.shipHeight, 0.028, 10000, 2000, guns, new ExplosionSequence(explosions), new AudioTemplate([
         ['explosionHuge.mp3'],
         ['explosion.mp3', 200],
         ['explosion.mp3', 600],
@@ -1013,7 +1252,11 @@ function Boss0(master, x, y) {
     this.straightCounter = 0;
     this.ammoSpeed = 0.5;
     this.omniV = [0, -this.ammoSpeed];
-    this.elements = [Boss0.image];
+    this.prefire = 0;
+    this.chargeImages = [];
+    this.chargeImages[0] = new Image('images/tankCharge.png', 'purple', -59, 15, 56, 56, 0);
+    this.chargeImages[1] = new Image('images/tankCharge.png', 'purple', 3, 15, 56, 56, 0);
+    this.elements = [Boss0.image].concat(this.chargeImages);
 
     // Use boss's aim for omni shots
     var boss = this;
@@ -1072,13 +1315,22 @@ Boss0.prototype.updateGuns = function (ms) {
                         this.omniGuns[0].fire()
                         this.omniGuns[1].fire()
                     }
+                    this.prefire = (this.steps % 100) / 100;
                 } else if (this.steps % 10 === 0) {
                     // Fire tank guns
                     this.tankGuns[0].fire();
                     this.tankGuns[1].fire();
+                    this.prefire = Math.max(0, this.prefire - 0.4);
+                } else {
+                    this.prefire += 0.035;
                 }
+            } else {
+                this.prefire = Math.max(0, this.prefire - 0.02);
             }
         }
+
+        this.chargeImages[0].opacity = this.prefire;
+        this.chargeImages[1].opacity = this.prefire;
     }
 };
 
@@ -1093,7 +1345,7 @@ Boss0.prototype.updateTargetLocation = function (ms) {
             deltaY *= deltaY / approach;
         }
 
-        deltaX += 143 * Math.sin(this.moveTimer / 10);
+        deltaX += 143 * Math.sin(this.moveTimer * 0.005);
 
         // Adjust movement slowly
         this.lastMoveX *= 0.98;
@@ -1110,9 +1362,125 @@ Boss0.prototype.updateTargetLocation = function (ms) {
     this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
 };
 
+function Boss1(master, x, y) {
+    // Create guns
+    this.straightGunsA = [
+        new Gun(master, this, 16, -34, 3 * 20, 0, StraightShot),
+        new Gun(master, this, 16, -48, 3 * 20, 0, StraightShot),
+    ];
+    this.straightGunsB = [
+        new Gun(master, this, -35, -35, 3 * 20, 0, StraightShot),
+        new Gun(master, this, -35, -20, 3 * 20, 0, StraightShot),
+    ];
+    var guns = [];
+    guns.concat(this.straightGunsA, this.straightGunsB);
+
+    // Create explosion sequence
+    var explosions = createBossExplosion(Boss1.shipWidth, Boss1.shipHeight);
+
+    Enemy.call(this, master, x, y, Boss1.shipWidth, Boss1.shipHeight, 0.028, 10000, 1000, guns, new ExplosionSequence(explosions), new AudioTemplate([
+        ['explosionHuge.mp3'],
+        ['explosion.mp3', 200],
+        ['explosion.mp3', 600],
+        ['explosion.mp3', 800],
+        ['explosionBig.mp3', 1000]
+    ]));
+
+    this.moveTimer = 0;
+    this.lastMoveX = 0;
+    this.lastMoveY = 0;
+
+    this.timer = 0;
+    this.steps = 0;
+    this.straightCounter = 0;
+    this.shootSwap = false;
+    this.elements = [Boss1.image];
+}
+
+Boss1.shipWidth = 148;
+Boss1.shipHeight = 131;
+Boss1.image = new Image('images/boss1.png', 'cyan', -Boss1.shipWidth / 2, Boss1.shipHeight / 2, Boss1.shipWidth, Boss1.shipHeight);
+Boss1.prototype = Object.create(Enemy.prototype);
+
+Boss1.prototype.updateGuns = function (ms) {
+    this.timer += ms;
+    if (this.y < 240 && this.target) {
+        var deltaX = this.target.x - this.x;
+        var near = Math.abs(deltaX) < 142;
+
+        // Handle guns that are controlled by frame count
+        var nextStep = Math.floor(this.timer / 20);
+        for (; this.steps < nextStep; this.steps++) {
+            if (near) {
+                if (this.steps % 6 === 0) {
+                    this.shootSwap = !this.shootSwap;
+                    if (this.shootSwap) {
+                        this.straightGunsA[0].fire();
+                        this.straightGunsA[1].fire();
+                    } else {
+                        this.straightGunsB[0].fire();
+                        this.straightGunsB[1].fire();
+                    }
+                }
+            }
+
+            if (this.steps > 600) {
+                var shitedSteps = this.steps - 600;
+                if (Math.floor(shitedSteps / 512) % 2 === 0) {
+                    if (Math.floor(shitedSteps / 128) % 2 === 0 && shitedSteps % 20 === 0) {
+                        // Put an upper limit on the number of gnats to release
+                        if (this.master.getEnemyCount() < 25) {
+                            // Release a gnat
+                            var x = this.x + 48;
+                            var y = this.y + 34;
+                            this.master.addEnemy(new Gnat(this.master, x, y, this));
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+Boss1.prototype.updateTargetLocation = function (ms) {
+    this.moveTimer += ms;
+    if (this.target) {
+        var deltaX = this.target.x - this.x;
+        var deltaY = this.target.y - this.y;
+        var approach = 256;
+
+        if (Math.abs(deltaY) < (approach + 57 * Math.sin(this.moveTimer * 0.0025))) {
+            deltaY *= deltaY / approach;
+        }
+
+        deltaX += 143 * Math.sin(this.moveTimer * 0.005);
+
+        // Adjust movement slowly
+        // TODO: Slow down movement when gnats are being added?
+        this.lastMoveX *= 0.98;
+        this.lastMoveX += (0.001 * deltaX);
+        this.lastMoveY *= 0.9;
+        this.lastMoveY += 0.002 * deltaY;
+
+        this.targetX += this.lastMoveX;
+    }
+
+    this.targetY += this.lastMoveY - this.speed * ms;
+
+    // Horizontal bounds
+    this.targetX = Math.max(-Enemy.boundX, Math.min(Enemy.boundX, this.targetX));
+};
+
 var GroundTemplates = {
     metal: {
         image: new Image('images/groundMetal.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
+    circuit: {
+        image: new Image('images/groundCircuit.png', 'DarkGray'),
         segmentWidth: 320,
         segmentHeight: 320,
         vy: -0.048
@@ -1138,7 +1506,17 @@ GroundSegment.prototype.update = function (ms) {
     this.y += this.template.vy * ms;
     if (this.y <= -240 - this.template.segmentHeight / 2) {
         this.y += 480 + this.template.segmentHeight;
+
+        // Change the image, if previously queued
+        if (this.nextImage) {
+            this.elements[0] = this.nextImage;
+            this.nextImage = null;
+        }
     }
+};
+
+GroundSegment.prototype.queueImageChange = function (image) {
+    this.nextImage = image;
 };
 
 function Ground(template) {
@@ -1168,6 +1546,13 @@ function Ground(template) {
 }
 
 Ground.prototype = Object.create(Entity.prototype);
+
+Ground.prototype.queueTemplateChange = function (templateName) {
+    var image = GroundTemplates[templateName].image;
+    this.forEachChild(function (child) {
+        child.queueImageChange(image);
+    });
+};
 
 function OrderedQueue(compare) {
     this.compare = compare;
@@ -1228,8 +1613,9 @@ Wave = {
 }
 
 // TODO: Maybe take a maximum time and reject all adds that come after that?
-function Level(master, waves) {
+function Level(master, groundTemplate, waves) {
     this.master = master;
+    this.groundTemplate = groundTemplate;
     this.queue = new OrderedQueue(function compareAction(a, b) { return a.time - b.time; });
     this.timer = 0;
     this.endTime = 0;
@@ -1317,9 +1703,10 @@ Level.prototype.addRayGunWave = function (start, duration) {
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
 };
 
-Level.prototype.addBoss0Wave = function (start, duration) {
-    var end = start + duration;
-    this.addWave(Boss0, start, end, 0, 426, 5000 * 20, 0, 4);
+Level.createBossWaveFactory = function (enemy) {
+    return function (start) {
+        this.addWave(enemy, start, start + 100, undefined, undefined, 200, 0, 0, 0);
+    }
 };
 
 // TODO: xRand and xJitter are actually two names for the same thing; converge these
@@ -1391,145 +1778,12 @@ Level.prototype.update = function (ms) {
     }
 };
 
-function Master(layer) {
-    Entity.call(this);
-    this.layer = layer;
+var Levels = {};
 
-    // Events
-    this.ammoCollected = new Event();
-    this.healthCollected = new Event();
-    this.shieldsCollected = new Event();
-    this.lost = new Event();
-    this.won = new Event();
-
-    // Background
-    this.addChild(this.background = new Entity());
-    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
-    this.background.addChild(new Ground(GroundTemplates.metal));
-
-    // Player (and cursor)
-    this.playerInternal = new Player(this);
-    this.addChild(this.playerList = new Entity());
-    this.addChild(this.playerCursor = new Cursor(this));
-    this.addChild(this.playerShots = new Entity());
-
-    // Enemies
-    this.addChild(this.enemies = new Entity());
-    this.addChild(this.enemyShots = new Entity());
-
-    // Power-ups
-    this.addChild(this.powerups = new Entity());
-
-    // Special effects
-    this.addChild(this.effects = new Entity());
-
-    // Messages (or any other overlays)
-    this.addChild(this.overlays = new Entity());
-}
-
-Master.prototype = Object.create(Entity.prototype);
-Master.boundX = 640;
-Master.boundY = 284;
-Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
-
-Master.prototype.reset = function () {
-    // Clear old stuff
-    this.playerList.clearChildren();
-    this.playerShots.clearChildren();
-    this.enemies.clearChildren();
-    this.enemyShots.clearChildren();
-    this.powerups.clearChildren();
-    this.effects.clearChildren();
-    this.overlays.clearChildren();
-
-    // Reset the player
-    this.playerInternal.reset();
-    this.player = this.playerInternal;
-    this.playerList.addChild(this.player);
-
-    // Turn off the mouse cursor since the player moves with the mouse
-    this.layer.cursor = 'none';
-    this.levelCompleted = false;
-    this.done = false;
-
-    // TODO: Don't just load this by default
-    this.level = this.loadLevel1();
-
-    // TODO: Load a level instead of testing one enemy
-    //this.level = new Level(this, [{
-    //    factory: function (start, duration, density) {
-    //        this.addWave(Straight, 0, 100, undefined, undefined, 200, 0, 0, 0);
-    //    },
-
-    //    start: 0,
-    //    duration: 100
-    //}]);
-};
-
-Master.prototype.addPlayerShot = function (shot) {
-    this.playerShots.addChild(shot);
-};
-
-Master.prototype.removePlayerShot = function (shot) {
-    this.playerShots.removeChild(shot);
-};
-
-Master.prototype.addEnemy = function (enemy) {
-    this.enemies.addChild(enemy);
-};
-
-Master.prototype.removeEnemy = function (enemy) {
-    this.enemies.removeChild(enemy);
-};
-
-Master.prototype.addEnemyShot = function (shot) {
-    this.enemyShots.addChild(shot);
-};
-
-Master.prototype.removeEnemyShot = function (shot) {
-    this.enemyShots.removeChild(shot);
-};
-
-Master.prototype.addPowerUp = function (powerup) {
-    this.powerups.addChild(powerup);
-};
-
-Master.prototype.removePowerUp = function (powerup) {
-    this.powerups.removeChild(powerup);
-};
-
-Master.prototype.addOverlay = function (child) {
-    this.overlays.addChild(child);
-};
-
-Master.prototype.checkShotCollision = function (shot, b) {
-    var bw = b.shipWidth / 2;
-    var bh = b.shipHeight / 2;
-    return (shot.x >= b.x - bw)
-        && (shot.x <= b.x + bw)
-        && (shot.y >= b.y - bh)
-        && (shot.y <= b.y + bh);
-};
-
-Master.prototype.checkShipCollision = function (a, b) {
-    // Not particularly precise, but true to the original...
-    var x = a.x - b.x;
-    var y = a.y - b.y;
-    var distance = Math.abs(x) + Math.abs(y);
-    return distance < (a.shipWidth + b.shipHeight) / 4;
-};
-
-Master.prototype.checkPowerUpCollision = function (ship, powerup) {
-    // Again, kind of odd logic here
-    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
-    return distance < ship.shipHeight / 2;
-};
-
-// TODO: Where should this code go?
-Master.prototype.loadLevel1 = function (master) {
-    var totalTime = 12000 * 20;
-    var waveDuration = 500;
-    time = 600 * 20;
+Levels.loadLevel1 = function (master) {
+    var totalTime = 60000;
+    var waveDuration = 400;
+    time = 400 * 20;
     var waves = [];
 
     // Always add the same first wave
@@ -1541,6 +1795,110 @@ Master.prototype.loadLevel1 = function (master) {
     });
 
     // Now add random waves
+    while (time < totalTime - 500 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.7) {
+            factory = Level.prototype.addStraightWave;
+        } else {
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // Boss
+    waves.push({
+        factory: Level.createBossWaveFactory(RayGunBoss),
+        start: totalTime + 75 * 20,
+        duration: 0
+    });
+
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'metal', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
+Levels.loadLevel2 = function (master) {
+    var totalTime = 120000;
+    var waveDuration = 500;
+    time = 50 * 20;
+    var waves = [];
+
+    while (time < totalTime - 500 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        var r = Math.random();
+
+        // Pick the type of wave
+        var factory;
+        if (r < 0.15) {
+            // 15% chance
+            factory = Level.prototype.addStraightArrowWave;
+        } else if (r < 0.25) {
+            // 10% chance
+            factory = Level.prototype.addOmniArrowWave;
+        } else if (r > 0.6) {
+            // 60% chance
+            factory = Level.prototype.addStraightWave;
+        } else {
+            // 15% chance
+            factory = Level.prototype.addOmniWave;
+        }
+
+        waves.push({
+            factory: factory,
+            start: time,
+            duration: waveDuration,
+            density: density
+        });
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    // Boss
+    waves.push({
+        factory: Level.createBossWaveFactory(Tank),
+        start: totalTime + 75 * 20,
+        duration: (1000 - 75) * 20
+    });
+
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'metal', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
+Levels.loadLevel3 = function (master) {
+    var totalTime = 12000 * 20;
+    var waveDuration = 500;
+    time = 50 * 20;
+    var waves = [];
+
     while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
@@ -1585,17 +1943,170 @@ Master.prototype.loadLevel1 = function (master) {
 
     // Boss
     waves.push({
-        factory: Level.prototype.addBoss0Wave,
+        factory: Level.createBossWaveFactory(Boss0),
         start: totalTime + 75 * 20,
         duration: (1000 - 75) * 20
     });
 
 
     // Ammunition and power-ups
-    var level = new Level(this, waves);
+    var level = new Level(master, 'circuit', waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
+};
+
+Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
+    return function (master) {
+        return new Level(master, groundTemplate ? groundTemplate : 'metal', [{
+            factory: function (start, duration, density) {
+                this.addWave(enemy, 0, 100, undefined, undefined, 200, 0, 0, 0);
+            },
+
+            start: 0,
+            duration: 100
+        }]);
+    };
+};
+
+Levels.levels = [
+    // TODO: Use real levels, of course...
+    //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(RayGunBoss, 'circuit'),
+    Levels.loadLevel1,
+    Levels.loadLevel2,
+    Levels.loadLevel3,
+];
+
+function Master(layer) {
+    Entity.call(this);
+    this.layer = layer;
+
+    // Events
+    this.ammoCollected = new Event();
+    this.healthCollected = new Event();
+    this.shieldsCollected = new Event();
+    this.lost = new Event();
+    this.won = new Event();
+    this.levelTransition = new Event();
+
+    // Background
+    this.addChild(this.background = new Entity());
+    this.background.addChild(new Ground(GroundTemplates.metalHighlight));
+    this.background.addChild(this.ground = new Ground(GroundTemplates.metal));
+
+    // Player (and cursor)
+    this.playerInternal = new Player(this);
+    this.addChild(this.playerList = new Entity());
+    this.addChild(this.playerCursor = new Cursor(this));
+    this.addChild(this.playerShots = new Entity());
+
+    // Enemies
+    this.addChild(this.enemies = new Entity());
+    this.addChild(this.enemyShots = new Entity());
+
+    // Power-ups
+    this.addChild(this.powerups = new Entity());
+
+    // Special effects
+    this.addChild(this.effects = new Entity());
+}
+
+Master.prototype = Object.create(Entity.prototype);
+Master.boundX = 640;
+Master.boundY = 284;
+Master.collisionExplosionTemplate = new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20);
+
+Master.prototype.reset = function () {
+    // Clear old stuff
+    this.playerList.clearChildren();
+    this.playerShots.clearChildren();
+    this.enemies.clearChildren();
+    this.enemyShots.clearChildren();
+    this.powerups.clearChildren();
+    this.effects.clearChildren();
+
+    // Reset the player
+    this.playerInternal.reset();
+    this.player = this.playerInternal;
+    this.playerList.addChild(this.player);
+
+    // Turn off the mouse cursor since the player moves with the mouse
+    this.layer.cursor = 'none';
+    this.done = false;
+
+    // Load the first level
+    this.setLevel(0);
+};
+
+Master.prototype.setLevel = function (levelIndex) {
+    this.levelIndex = levelIndex;
+    this.levelCompleted = false;
+    this.level = Levels.levels[this.levelIndex](this);
+    
+    // Set ground image
+    var groundTemplate = this.level.groundTemplate || 'metal';
+    this.ground.queueTemplateChange(groundTemplate);
+};
+
+Master.prototype.addPlayerShot = function (shot) {
+    this.playerShots.addChild(shot);
+};
+
+Master.prototype.removePlayerShot = function (shot) {
+    this.playerShots.removeChild(shot);
+};
+
+Master.prototype.addEnemy = function (enemy) {
+    this.enemies.addChild(enemy);
+};
+
+Master.prototype.removeEnemy = function (enemy) {
+    this.enemies.removeChild(enemy);
+};
+
+Master.prototype.getEnemyCount = function () {
+    return this.enemies.getChildCount();
+};
+
+Master.prototype.addEnemyShot = function (shot) {
+    this.enemyShots.addChild(shot);
+};
+
+Master.prototype.removeEnemyShot = function (shot) {
+    this.enemyShots.removeChild(shot);
+};
+
+Master.prototype.addPowerUp = function (powerup) {
+    this.powerups.addChild(powerup);
+};
+
+Master.prototype.removePowerUp = function (powerup) {
+    this.powerups.removeChild(powerup);
+};
+
+Master.prototype.checkShotCollision = function (shot, b) {
+    var bw = b.shipWidth / 2;
+    var bh = b.shipHeight / 2;
+    return (shot.x >= b.x - bw)
+        && (shot.x <= b.x + bw)
+        && (shot.y >= b.y - bh)
+        && (shot.y <= b.y + bh);
+};
+
+Master.prototype.checkShipCollision = function (a, b) {
+    // Not particularly precise, but true to the original...
+    var x = a.x - b.x;
+    var y = a.y - b.y;
+    var distance = Math.abs(x) + Math.abs(y);
+    return distance < (a.shipWidth + b.shipHeight) / 4;
+};
+
+Master.prototype.checkPowerUpCollision = function (ship, powerup) {
+    // Again, kind of odd logic here
+    var distance = Math.abs(ship.x - powerup.x) + Math.abs(ship.y - powerup.y);
+    return distance < ship.shipHeight / 2;
 };
 
 Master.prototype.update = function (ms) {
@@ -1770,8 +2281,17 @@ Master.prototype.updateGame = function (ms) {
             this.levelCompleted = true;
 
             // Signal the win
-            this.won.fire();
-            wonOrLost = true;
+            var lastLevelCompleted = (this.levelIndex == Levels.levels.length - 1);
+            this.won.fire(this.levelIndex, lastLevelCompleted);
+            if (lastLevelCompleted) {
+                wonOrLost = true;
+            } else {
+                // Level transition
+                var master = this;
+                this.effects.addChild(new Timer(9000, function () {
+                    master.setLevel(master.levelIndex + 1);
+                }));
+            }
         }
     }
 
@@ -1919,16 +2439,25 @@ function Display(master) {
     });
 
     // End messages
-    master.won.addListener(function () {
-        master.addOverlay(new Message('y o u   w i n'));
+    master.won.addListener(function (levelIndex, lastLevelCompleted) {
+        if (lastLevelCompleted) {
+            display.addOverlay(new Message('y o u   w i n'));
+        } else {
+            display.addOverlay(new Message('l e v e l   ' + (levelIndex + 1) + '   c o m p l e t e', 2000));
+
+            // TODO: Transition effect for next level
+        }
     });
     master.lost.addListener(function () {
-        master.addOverlay(new Message('g a m e   o v e r'));
+        display.addOverlay(new Message('g a m e   o v e r'));
     });
 
     this.addChild(this.electricityLeft);
     this.addChild(this.electricityRight);
     this.addChild(this.healthBlink);
+
+    // Messages (or any other overlays)
+    this.addChild(this.overlays = new Entity());
 }
 
 Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320, 240, 65, 480);
@@ -1999,7 +2528,12 @@ Display.prototype.reset = function () {
     this.electricityLeft.reset();
     this.electricityRight.reset();
     this.healthBlink.reset();
+    this.overlays.clearChildren();
     this.update(0);
+};
+
+Display.prototype.addOverlay = function (child) {
+    this.overlays.addChild(child);
 };
 
 function Cursor(master) {
@@ -2264,6 +2798,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/ammoBar2.png',
             'images/blink.png',
             'images/boss0.png',
+            'images/boss1.png',
             'images/bullet.png',
             'images/bulletExplosion.png',
             'images/bulletFlash.png',
@@ -2272,6 +2807,8 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/empExplosion.png',
             'images/empFlash.png',
             'images/enemyExplosion.png',
+            'images/gnat.png',
+            'images/groundCircuit.png',
             'images/healthBar.png',
             'images/omni.png',
             'images/omniExplosion.png',
@@ -2303,6 +2840,8 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/straightShot.png',
             'images/straightShotExplosion.png',
             'images/superShieldBar.png',
+            'images/tank.png',
+            'images/tankCharge.png',
             'images/tankShot.png',
             'images/tankShotExplosion.png',
             'images/tankShotFlash.png',
