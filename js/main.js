@@ -1698,9 +1698,41 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 };
 
+Level.prototype.addMixedGnatWave = function (start, duration, density) {
+    var frequency = 1 / density * 20;
+    var end = start + 130 * 20;
+    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var xRand = 1;
+
+    if (Math.random() > 0.5) {
+        this.addWave(Straight, start + 50 * 20, start + duration, c, undefined, 90 * frequency, 0, xRand);
+    } else {
+        this.addWave(Omni, start + 50 * 20, start + 130 * 20, c, undefined, 20 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+        this.addWave(Straight, start + 200, start + 250* 20, c, undefined, 50 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+        this.addWave(Omni, start + 320 * 20, start + 400 * 20, c, undefined, 20 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+    }
+
+    this.addWave(Gnat, start, start + 17 * 20, c, undefined, 3 * frequency, 0, 3);
+};
+
+Level.prototype.addGnatWave = function (start, duration, density) {
+    // Add omni arrow waves
+    var frequency = 1 / density * 20;
+    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var xRand = 3;
+
+    this.addWave(Gnat, start, start + 35 * 20, c, undefined, 2 * frequency, 0, 3);
+    this.addWave(Gnat, start + 300 * 20, start + 310 * 20, c, undefined, 2 * frequency, 0, 3);
+    this.addWave(Gnat, start + 300 * 20, start + 400 * 20, c, undefined, 30 * frequency, 0, 3);
+};
+
 Level.prototype.addRayGunWave = function (start, duration) {
     var end = start + duration;
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
+};
+
+Level.prototype.addTankWave = function (start, duration) {
+    this.addWave(Tank, start, start + 100, undefined, undefined, 200, 0, 8, 0);
 };
 
 Level.createBossWaveFactory = function (enemy) {
@@ -1783,7 +1815,7 @@ var Levels = {};
 Levels.loadLevel1 = function (master) {
     var totalTime = 60000;
     var waveDuration = 400;
-    time = 400 * 20;
+    var time = 400 * 20;
     var waves = [];
 
     // Always add the same first wave
@@ -1840,7 +1872,7 @@ Levels.loadLevel1 = function (master) {
 Levels.loadLevel2 = function (master) {
     var totalTime = 120000;
     var waveDuration = 500;
-    time = 50 * 20;
+    var time = 50 * 20;
     var waves = [];
 
     while (time < totalTime - 1000 * 20) {
@@ -1896,7 +1928,7 @@ Levels.loadLevel2 = function (master) {
 Levels.loadLevel3 = function (master) {
     var totalTime = 12000 * 20;
     var waveDuration = 500;
-    time = 50 * 20;
+    var time = 50 * 20;
     var waves = [];
 
     while (time < totalTime - 1000 * 20) {
@@ -1956,6 +1988,118 @@ Levels.loadLevel3 = function (master) {
     return level;
 };
 
+Levels.loadLevel4 = function (master) {
+    var totalTime = 14000 * 20;
+    var waveDuration = 500;
+    var time = 500 * 20;
+    var waves = [];
+
+    waves.push({
+        factory: Level.prototype.addStraightWave,
+        start: 100,
+        duration: time,
+        density: 0.5
+    });
+
+    var waveIndex = 0;
+    while (time < totalTime - 1000 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        waveIndex++;
+
+        // Hard-coded waves
+        if (waveIndex === 5 || waveIndex === 12) {
+            waves.push({
+                factory: Level.prototype.addGnatWave,
+                start: time,
+                duration: waveDuration,
+                density: 0.9
+            });
+        } else if (waveIndex === 6 || waveIndex === 11 || waveIndex === 15 || waveIndex === 16) {
+            waves.push({
+                factory: Level.prototype.addTankWave,
+                start: time + 50 * 20
+            });
+
+            waves.push({
+                factory: Level.prototype.addStraightWave,
+                start: time,
+                duration: 300 * 20,
+                density: 0.9
+            });
+        } else {
+            // Random waves
+            var r = Math.random();
+            var factory;
+            if (waveIndex < 5) {
+                if (r < 0.2) {
+                    factory = Level.prototype.addStraightArrowWave;
+                } else if (r < 0.3) {
+                    factory = Level.prototype.addOmniArrowWave;
+                } else if (r > 0.6) {
+                    factory = Level.prototype.addOmniWave;
+                } else {
+                    factory = Level.prototype.addStraightWave;
+                }
+            } else {
+                if (r < 0.25) {
+                    factory = Level.prototype.addMixedGnatWave;
+                } else if (r < 0.35) {
+                    factory = Level.prototype.addStraightArrowWave;
+                } else if (r < 0.5) {
+                    factory = Level.prototype.addOmniArrowWave;
+                } else if (r > 0.8) {
+                    factory = Level.prototype.addOmniWave;
+                } else {
+                    factory = Level.prototype.addStraightWave;
+                }
+            }
+
+            waves.push({
+                factory: factory,
+                start: time,
+                duration: waveDuration,
+                density: density
+            });
+        }
+
+        // TODO: Extra power-ups?
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    waves.push({
+        factory: Level.prototype.addMixedGnatWave,
+        start: 3000 * 20,
+        duration: 2000 * 20,
+        density: 0.9
+    });
+
+    waves.push({
+        factory: Level.prototype.addMixedGnatWave,
+        start: 8000 * 20,
+        duration: 3000 * 20,
+        density: 0.9
+    });
+
+    // Boss
+    waves.push({
+        factory: Level.createBossWaveFactory(Boss1),
+        start: totalTime + 75 * 20,
+        duration: 0
+    });
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'circuit', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
 Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
     return function (master) {
         return new Level(master, groundTemplate ? groundTemplate : 'metal', [{
@@ -1977,6 +2121,7 @@ Levels.levels = [
     Levels.loadLevel1,
     Levels.loadLevel2,
     Levels.loadLevel3,
+    Levels.loadLevel4,
 ];
 
 function Master(layer) {
