@@ -123,6 +123,7 @@ function PowerUp(image, shadowImage, use, master, x, y) {
 
 PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
 PowerUp.shieldImage = new Image('images/powerupShield.png', 'black');
+PowerUp.ammo = 150;
 // TODO: Maybe generate some of these images rather than loading several separate ones?
 PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
@@ -148,7 +149,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow0Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[0] = 150;
+                this.master.player.ammo[0] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -156,7 +157,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow1Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[1] = 150;
+                this.master.player.ammo[1] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -164,7 +165,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[2] = 150;
+                this.master.player.ammo[2] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -2609,9 +2610,9 @@ Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320,
 Display.statRightImage = new Image('images/statBackground.png', 'darkgray', 320 - 65, 240, 65, 480);
 Display.statTopLeftImage = new Image('images/statTop.png', 'darkgray', -320, 240, 65, 94, 0.5);
 Display.ammoBarImages = [
-    new Image('images/ammoBar0.png', 'yellow'),
-    new Image('images/ammoBar1.png', 'green'),
-    new Image('images/ammoBar2.png', 'blue')
+    new ImageRegion('images/ammoBar0.png', 'yellow', 0, 0, 1, 1),
+    new ImageRegion('images/ammoBar1.png', 'green', 0, 0, 1, 1),
+    new ImageRegion('images/ammoBar2.png', 'blue', 0, 0, 1, 1)
 ];
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
@@ -2639,6 +2640,7 @@ Display.prototype.update = function (ms) {
         var count = player.ammo.length;
         for (var i = 0; i < count; i++) {
             this.ammo[i].height = 1.5 * player.ammo[i];
+            this.ammo[i].sheight = player.ammo[i] / PowerUp.ammo;
             this.ammo[i].opacity = (this.blink || player.ammo[i] > Display.ammoBlinkThreshold) ? 1 : Display.blinkOpacity;
         }
 
