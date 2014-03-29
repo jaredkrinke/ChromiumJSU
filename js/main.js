@@ -1487,6 +1487,13 @@ var GroundTemplates = {
         vy: -0.048
     },
 
+    pcb: {
+        image: new Image('images/groundPCB.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
     metalHighlight: {
         image: new Image('images/groundMetalHighlight.png', 'DarkRed'),
         segmentWidth: 640,
@@ -2095,7 +2102,7 @@ Levels.loadLevel4 = function (master) {
     });
 
     // Ammunition and power-ups
-    var level = new Level(master, 'circuit', waves);
+    var level = new Level(master, 'pcb', waves);
     level.addPowerUps(0, totalTime + 9000 * 20);
 
     return level;
@@ -2115,10 +2122,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 };
 
 Levels.levels = [
-    // TODO: Use real levels, of course...
     //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
-    //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
-    //Levels.createSingleEnemyTestLevelLoader(RayGunBoss, 'circuit'),
     Levels.loadLevel1,
     Levels.loadLevel2,
     Levels.loadLevel3,
@@ -2963,6 +2967,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/enemyExplosion.png',
             'images/gnat.png',
             'images/groundCircuit.png',
+            'images/groundPCB.png',
             'images/healthBar.png',
             'images/omni.png',
             'images/omniExplosion.png',
