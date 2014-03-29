@@ -2622,9 +2622,9 @@ Display.blinkPeriod = 300;
 Display.blinkOpacity = 0.5;
 Display.ammoBlinkThreshold = 50;
 Display.healthBlinkThreshold = Player.maxHealth * 0.3;
-Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
-Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
-Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.healthBarImage = new ImageRegion('images/healthBar.png', 'red', 0, 0, 1, 1, 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, Display.barMaxHeight);
+Display.shieldBarImage = new ImageRegion('images/shieldBar.png', 'blue', 0, 0, 1, 1, -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.superShieldBarImage = new ImageRegion('images/superShieldBar.png', 'yellow', 0, 0, 1, 1, -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
@@ -2645,21 +2645,15 @@ Display.prototype.update = function (ms) {
         }
 
         // Update health
-        var height = Math.max(0, player.health / Player.maxHealth * Display.barMaxHeight);
-        this.healthBar.height = height;
-        this.healthBar.y = Display.barBaseY + height;
+        this.updateBar(this.healthBar, player.health / Player.maxHealth);
         this.healthBar.opacity = (this.blink || player.shields > 0 || player.health > Display.healthBlinkThreshold) ? 1 : Display.blinkOpacity;
 
         // Update shields
-        height = Math.min(Display.barMaxHeight, Math.max(0, player.shields / Player.maxShields * Display.barMaxHeight));
-        this.shieldBar.height = height;
-        this.superShieldBar.height = height;
-        this.shieldBar.y = Display.barBaseY + height;
-        this.superShieldBar.y = this.shieldBar.y;
-        this.superShieldBar.opacity = Math.max(0, (player.shields - Player.maxShields) / Player.maxShields);
+        this.updateBar(this.shieldBar, player.shields / Player.maxShields);
+        this.updateBar(this.superShieldBar, (player.shields - Player.maxShields) / Player.maxShields);
     } else {
-        this.healthBar.height = 0;
-        this.shieldBar.height = 0;
+        this.healthBar.opacity = 0;
+        this.shieldBar.opacity = 0;
         this.superShieldBar.opacity = 0;
     }
 
@@ -2677,6 +2671,19 @@ Display.prototype.reset = function () {
     this.healthBlink.reset();
     this.overlays.clearChildren();
     this.update(0);
+};
+
+Display.prototype.updateBar = function (bar, fraction) {
+    if (fraction > 0) {
+        height = Math.min(Display.barMaxHeight, fraction * Display.barMaxHeight);
+        bar.y = Display.barBaseY + height;
+        bar.height = height;
+        bar.sy = 1 - (height / Display.barMaxHeight);
+        bar.sheight = 1 - bar.sy;
+        bar.opacity = 1;
+    } else {
+        bar.opacity = 0;
+    }
 };
 
 Display.prototype.addOverlay = function (child) {
