@@ -1,5 +1,4 @@
 ﻿For beta 3:
-Lengthen image for ammo bars
 Add level 4 background
 Allow the player to unlock/start on subsequent levels?
 Retargeting for last boss gnats?
