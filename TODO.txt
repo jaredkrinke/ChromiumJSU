@@ -1,6 +1,6 @@
 ﻿For beta 3:
 Fix tiling of backgrounds
-Allow the player to unlock/start on subsequent levels?
+Allow the player to unlock/start on subsequent levels
 Retargeting for last boss gnats?
 
 For release candidate:
