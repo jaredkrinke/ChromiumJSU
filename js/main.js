@@ -1502,10 +1502,12 @@ var GroundTemplates = {
     }
 }
 
-function GroundSegment(template, x, y, width, height) {
+function GroundSegment(template, x, y, width, height, totalHeight, flipOnReset) {
     Entity.call(this, x, y, width, height);
     this.template = template;
     this.elements = [template.image];
+    this.totalHeight = totalHeight;
+    this.flipOnReset = flipOnReset;
 }
 
 GroundSegment.prototype = Object.create(Entity.prototype);
@@ -1513,12 +1515,17 @@ GroundSegment.prototype = Object.create(Entity.prototype);
 GroundSegment.prototype.update = function (ms) {
     this.y += this.template.vy * ms;
     if (this.y <= -240 - this.template.segmentHeight / 2) {
-        this.y += 480 + this.template.segmentHeight;
+        this.y += this.totalHeight;
 
         // Change the image, if previously queued
         if (this.nextImage) {
             this.elements[0] = this.nextImage;
             this.nextImage = null;
+        }
+
+        // Flip, if necessary
+        if (this.flipOnReset) {
+            this.height = -this.height;
         }
     }
 };
@@ -1534,6 +1541,10 @@ function Ground(template) {
     var screenHeight = 480;
     var y = -screenHeight / 2;
     var rows = Math.ceil(screenHeight / template.segmentHeight) + 1;
+    var totalHeight = rows * template.segmentHeight;
+
+    // If there's an uneven number, they'll need to alternate each time they reset to the top
+    var flipOnReset = !!(rows % 2);
 
     var screenWidth = 640;
     var columns = Math.ceil(screenWidth / template.segmentWidth);
@@ -1542,7 +1553,7 @@ function Ground(template) {
         var scaleX = 1;
         var x = -screenWidth / 2 + template.segmentWidth / 2;
         for (var j = 0; j < columns; j++) {
-            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
+            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight, totalHeight, flipOnReset));
             scaleX = -scaleX;
             x += template.segmentWidth;
         }
