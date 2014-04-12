@@ -1018,6 +1018,11 @@ Gnat.prototype.updateGuns = function (ms) {
 Gnat.prototype.updateTargetLocation = function (ms) {
     this.timer += ms / 20;
 
+    // Change target to the player after a delay
+    if (this.timer > 272) {
+        this.moveTarget = this.target;
+    }
+
     // Note: This uses a different coordinate system right up until the end...
     // TODO: Rerwrite this...
     var deltaX = 0;
@@ -2133,7 +2138,7 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 };
 
 Levels.levels = [
-    //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
+    //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
     Levels.loadLevel1,
     Levels.loadLevel2,
     Levels.loadLevel3,
