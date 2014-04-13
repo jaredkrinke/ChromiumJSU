@@ -1,5 +1,5 @@
 ﻿For beta 3:
-Allow the player to unlock/start on subsequent levels
+Only allow starting on unlocked levels
 
 For release candidate:
 Handle loading errors

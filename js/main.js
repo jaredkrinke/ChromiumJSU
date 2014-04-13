@@ -2763,7 +2763,11 @@ GameLayer.prototype.reset = function () {
     this.display.reset();
 };
 
-GameLayer.prototype.start = function () {
+GameLayer.prototype.start = function (levelIndex) {
+    if (levelIndex !== undefined) {
+        this.master.setLevel(levelIndex);
+    }
+
     Radius.pushLayer(this);
 };
 
@@ -2889,9 +2893,20 @@ function MainMenu(loadPromise) {
         Audio.setMuted(text === audioOptions[1]);
     });
 
+    this.levelIndex = 0;
+    var levelOptions = [];
+    for (var i = 0, count = Levels.levels.length; i < count; i++) {
+        levelOptions.push((i + 1).toString());
+    }
+    var levelChoice = new Choice('Level', levelOptions, 0);
+    levelChoice.choiceChanged.addListener(function (index) {
+        mainMenu.levelIndex = index - 1;
+    });
+
     var options = [
         new Separator(),
-        new Button('Start New Game', function () { mainMenu.startNewGame(); }),
+        new Button('Start New Game', function () { mainMenu.startNewGame(mainMenu.levelIndex); }),
+        levelChoice,
         new Separator(),
         audioChoice,
     ];
@@ -2904,7 +2919,7 @@ function MainMenu(loadPromise) {
         fullscreenChoice.choiceChanged.addListener(function (text) {
             Radius.setFullscreen(text === fullscreenOptions[1]);
         });
-        options.splice(4, 0, fullscreenChoice);
+        options.splice(5, 0, fullscreenChoice);
     }
 
     // Setup background
@@ -2927,15 +2942,15 @@ function MainMenu(loadPromise) {
 
 MainMenu.prototype = Object.create(FormLayer.prototype);
 
-MainMenu.prototype.startNewGameInternal = function () {
+MainMenu.prototype.startNewGameInternal = function (levelIndex) {
     this.gameLayer.reset();
-    this.gameLayer.start();
+    this.gameLayer.start(levelIndex);
 };
 
-MainMenu.prototype.startNewGame = function () {
+MainMenu.prototype.startNewGame = function (levelIndex) {
     if (this.ready) {
         // Everything's loaded, so just go
-        this.startNewGameInternal();
+        this.startNewGameInternal(levelIndex);
     } else {
         // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
         var mainMenu = this;
@@ -2944,7 +2959,7 @@ MainMenu.prototype.startNewGame = function () {
         loadingLayer.load(this.loadPromise, function () {
             mainMenu.ready = true;
             Radius.popLayer();
-            mainMenu.startNewGameInternal();
+            mainMenu.startNewGameInternal(levelIndex);
         });
     }
 };
