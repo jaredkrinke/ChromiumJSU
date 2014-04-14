@@ -2893,14 +2893,27 @@ function MainMenu(loadPromise) {
         Audio.setMuted(text === audioOptions[1]);
     });
 
+    // Allow starting on levels that have been unlocked
+    var levelCount = Levels.levels.length;
+    var maxLevelKey = 'maxLevelUnlocked';
+    var maxLevelIndex = Math.min(levelCount - 1, parseInt(localStorage[maxLevelKey]) || 0);
     this.levelIndex = 0;
     var levelOptions = [];
-    for (var i = 0, count = Levels.levels.length; i < count; i++) {
+    for (var i = 0; i < levelCount; i++) {
         levelOptions.push((i + 1).toString());
     }
-    var levelChoice = new Choice('Level', levelOptions, 0);
+    var levelChoice = new Choice('Level', levelOptions, 0, maxLevelIndex);
     levelChoice.choiceChanged.addListener(function (index) {
         mainMenu.levelIndex = index - 1;
+    });
+
+    // After beating a level, unlock the next one
+    this.gameLayer.master.won.addListener(function (levelIndex, last) {
+        if (!last) {
+            maxLevelIndex++;
+            localStorage[maxLevelKey] = maxLevelIndex;
+            levelChoice.setMaxIndex(maxLevelIndex);
+        }
     });
 
     var options = [

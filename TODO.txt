@@ -1,10 +1,7 @@
-﻿For beta 3:
-Only allow starting on unlocked levels
-
-For release candidate:
+﻿For release candidate:
 Handle loading errors
 Add scoring?
 Optimizations
 Update to latest Radius Engine
 Create gameplay video?
-Add a demo to the menu background?
+Better sound effects?
