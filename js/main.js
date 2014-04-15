@@ -123,6 +123,7 @@ function PowerUp(image, shadowImage, use, master, x, y) {
 
 PowerUp.weaponImage = new Image('images/powerupAmmo.png', 'white');
 PowerUp.shieldImage = new Image('images/powerupShield.png', 'black');
+PowerUp.ammo = 150;
 // TODO: Maybe generate some of these images rather than loading several separate ones?
 PowerUp.shadow0Image = new Image('images/powerupShadow0.png', 'yellow', -1.25, 1.25, 2.5, 2.5);
 PowerUp.shadow1Image = new Image('images/powerupShadow1.png', 'green', -1.25, 1.25, 2.5, 2.5);
@@ -148,7 +149,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow0Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[0] = 150;
+                this.master.player.ammo[0] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -156,7 +157,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow1Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[1] = 150;
+                this.master.player.ammo[1] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -164,7 +165,7 @@ PowerUps = [
     function (master, x, y) {
         return new PowerUp(PowerUp.weaponImage, PowerUp.shadow2Image, function () {
             if (this.master.player) {
-                this.master.player.ammo[2] = 150;
+                this.master.player.ammo[2] = PowerUp.ammo;
                 this.master.ammoCollected.fire();
             }
         }, master, x, y);
@@ -1017,6 +1018,11 @@ Gnat.prototype.updateGuns = function (ms) {
 Gnat.prototype.updateTargetLocation = function (ms) {
     this.timer += ms / 20;
 
+    // Change target to the player after a delay
+    if (this.timer > 272) {
+        this.moveTarget = this.target;
+    }
+
     // Note: This uses a different coordinate system right up until the end...
     // TODO: Rerwrite this...
     var deltaX = 0;
@@ -1486,6 +1492,13 @@ var GroundTemplates = {
         vy: -0.048
     },
 
+    pcb: {
+        image: new Image('images/groundPCB.png', 'DarkGray'),
+        segmentWidth: 320,
+        segmentHeight: 320,
+        vy: -0.048
+    },
+
     metalHighlight: {
         image: new Image('images/groundMetalHighlight.png', 'DarkRed'),
         segmentWidth: 640,
@@ -1494,10 +1507,12 @@ var GroundTemplates = {
     }
 }
 
-function GroundSegment(template, x, y, width, height) {
+function GroundSegment(template, x, y, width, height, totalHeight, flipOnReset) {
     Entity.call(this, x, y, width, height);
     this.template = template;
     this.elements = [template.image];
+    this.totalHeight = totalHeight;
+    this.flipOnReset = flipOnReset;
 }
 
 GroundSegment.prototype = Object.create(Entity.prototype);
@@ -1505,12 +1520,17 @@ GroundSegment.prototype = Object.create(Entity.prototype);
 GroundSegment.prototype.update = function (ms) {
     this.y += this.template.vy * ms;
     if (this.y <= -240 - this.template.segmentHeight / 2) {
-        this.y += 480 + this.template.segmentHeight;
+        this.y += this.totalHeight;
 
         // Change the image, if previously queued
         if (this.nextImage) {
             this.elements[0] = this.nextImage;
             this.nextImage = null;
+        }
+
+        // Flip, if necessary
+        if (this.flipOnReset) {
+            this.height = -this.height;
         }
     }
 };
@@ -1526,6 +1546,10 @@ function Ground(template) {
     var screenHeight = 480;
     var y = -screenHeight / 2;
     var rows = Math.ceil(screenHeight / template.segmentHeight) + 1;
+    var totalHeight = rows * template.segmentHeight;
+
+    // If there's an uneven number, they'll need to alternate each time they reset to the top
+    var flipOnReset = !!(rows % 2);
 
     var screenWidth = 640;
     var columns = Math.ceil(screenWidth / template.segmentWidth);
@@ -1534,7 +1558,7 @@ function Ground(template) {
         var scaleX = 1;
         var x = -screenWidth / 2 + template.segmentWidth / 2;
         for (var j = 0; j < columns; j++) {
-            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight));
+            this.addChild(new GroundSegment(template, x, y + template.segmentHeight / 2, scaleX * template.segmentWidth, scaleY * template.segmentHeight, totalHeight, flipOnReset));
             scaleX = -scaleX;
             x += template.segmentWidth;
         }
@@ -1698,9 +1722,41 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     this.addWave(Omni, start + 550 * 20, start + 555 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 };
 
+Level.prototype.addMixedGnatWave = function (start, duration, density) {
+    var frequency = 1 / density * 20;
+    var end = start + 130 * 20;
+    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var xRand = 1;
+
+    if (Math.random() > 0.5) {
+        this.addWave(Straight, start + 50 * 20, start + duration, c, undefined, 90 * frequency, 0, xRand);
+    } else {
+        this.addWave(Omni, start + 50 * 20, start + 130 * 20, c, undefined, 20 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+        this.addWave(Straight, start + 200, start + 250* 20, c, undefined, 50 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+        this.addWave(Omni, start + 320 * 20, start + 400 * 20, c, undefined, 20 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
+    }
+
+    this.addWave(Gnat, start, start + 17 * 20, c, undefined, 3 * frequency, 0, 3);
+};
+
+Level.prototype.addGnatWave = function (start, duration, density) {
+    // Add omni arrow waves
+    var frequency = 1 / density * 20;
+    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var xRand = 3;
+
+    this.addWave(Gnat, start, start + 35 * 20, c, undefined, 2 * frequency, 0, 3);
+    this.addWave(Gnat, start + 300 * 20, start + 310 * 20, c, undefined, 2 * frequency, 0, 3);
+    this.addWave(Gnat, start + 300 * 20, start + 400 * 20, c, undefined, 30 * frequency, 0, 3);
+};
+
 Level.prototype.addRayGunWave = function (start, duration) {
     var end = start + duration;
     this.addWave(RayGun, start, end, undefined, undefined, 2000 * 20, 1000 * 20, 8);
+};
+
+Level.prototype.addTankWave = function (start, duration) {
+    this.addWave(Tank, start, start + 100, undefined, undefined, 200, 0, 8, 0);
 };
 
 Level.createBossWaveFactory = function (enemy) {
@@ -1783,7 +1839,7 @@ var Levels = {};
 Levels.loadLevel1 = function (master) {
     var totalTime = 60000;
     var waveDuration = 400;
-    time = 400 * 20;
+    var time = 400 * 20;
     var waves = [];
 
     // Always add the same first wave
@@ -1840,7 +1896,7 @@ Levels.loadLevel1 = function (master) {
 Levels.loadLevel2 = function (master) {
     var totalTime = 120000;
     var waveDuration = 500;
-    time = 50 * 20;
+    var time = 50 * 20;
     var waves = [];
 
     while (time < totalTime - 1000 * 20) {
@@ -1896,7 +1952,7 @@ Levels.loadLevel2 = function (master) {
 Levels.loadLevel3 = function (master) {
     var totalTime = 12000 * 20;
     var waveDuration = 500;
-    time = 50 * 20;
+    var time = 50 * 20;
     var waves = [];
 
     while (time < totalTime - 1000 * 20) {
@@ -1956,6 +2012,118 @@ Levels.loadLevel3 = function (master) {
     return level;
 };
 
+Levels.loadLevel4 = function (master) {
+    var totalTime = 14000 * 20;
+    var waveDuration = 500;
+    var time = 500 * 20;
+    var waves = [];
+
+    waves.push({
+        factory: Level.prototype.addStraightWave,
+        start: 100,
+        duration: time,
+        density: 0.5
+    });
+
+    var waveIndex = 0;
+    while (time < totalTime - 1000 * 20) {
+        // Scale up the density as time goes on
+        var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
+        waveIndex++;
+
+        // Hard-coded waves
+        if (waveIndex === 5 || waveIndex === 12) {
+            waves.push({
+                factory: Level.prototype.addGnatWave,
+                start: time,
+                duration: waveDuration,
+                density: 0.9
+            });
+        } else if (waveIndex === 6 || waveIndex === 11 || waveIndex === 15 || waveIndex === 16) {
+            waves.push({
+                factory: Level.prototype.addTankWave,
+                start: time + 50 * 20
+            });
+
+            waves.push({
+                factory: Level.prototype.addStraightWave,
+                start: time,
+                duration: 300 * 20,
+                density: 0.9
+            });
+        } else {
+            // Random waves
+            var r = Math.random();
+            var factory;
+            if (waveIndex < 5) {
+                if (r < 0.2) {
+                    factory = Level.prototype.addStraightArrowWave;
+                } else if (r < 0.3) {
+                    factory = Level.prototype.addOmniArrowWave;
+                } else if (r > 0.6) {
+                    factory = Level.prototype.addOmniWave;
+                } else {
+                    factory = Level.prototype.addStraightWave;
+                }
+            } else {
+                if (r < 0.25) {
+                    factory = Level.prototype.addMixedGnatWave;
+                } else if (r < 0.35) {
+                    factory = Level.prototype.addStraightArrowWave;
+                } else if (r < 0.5) {
+                    factory = Level.prototype.addOmniArrowWave;
+                } else if (r > 0.8) {
+                    factory = Level.prototype.addOmniWave;
+                } else {
+                    factory = Level.prototype.addStraightWave;
+                }
+            }
+
+            waves.push({
+                factory: factory,
+                start: time,
+                duration: waveDuration,
+                density: density
+            });
+        }
+
+        // TODO: Extra power-ups?
+
+        time += waveDuration;
+        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+
+        // Put a little delay between waves
+        time += (50 + 50 * Math.random()) * 20;
+    }
+
+    waves.push({
+        factory: Level.prototype.addMixedGnatWave,
+        start: 3000 * 20,
+        duration: 2000 * 20,
+        density: 0.9
+    });
+
+    waves.push({
+        factory: Level.prototype.addMixedGnatWave,
+        start: 8000 * 20,
+        duration: 3000 * 20,
+        density: 0.9
+    });
+
+    // Boss
+    waves.push({
+        factory: Level.createBossWaveFactory(Boss1),
+        start: totalTime + 75 * 20,
+        duration: 0
+    });
+
+    // Ammunition and power-ups
+    var level = new Level(master, 'pcb', waves);
+    level.addPowerUps(0, totalTime + 9000 * 20);
+
+    return level;
+};
+
 Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
     return function (master) {
         return new Level(master, groundTemplate ? groundTemplate : 'metal', [{
@@ -1970,13 +2138,11 @@ Levels.createSingleEnemyTestLevelLoader = function (enemy, groundTemplate) {
 };
 
 Levels.levels = [
-    // TODO: Use real levels, of course...
-    //Levels.createSingleEnemyTestLevelLoader(Boss0, 'metal'),
     //Levels.createSingleEnemyTestLevelLoader(Boss1, 'metal'),
-    //Levels.createSingleEnemyTestLevelLoader(RayGunBoss, 'circuit'),
     Levels.loadLevel1,
     Levels.loadLevel2,
     Levels.loadLevel3,
+    Levels.loadLevel4,
 ];
 
 function Master(layer) {
@@ -2464,9 +2630,9 @@ Display.statLeftImage = new Image('images/statBackground.png', 'darkgray', -320,
 Display.statRightImage = new Image('images/statBackground.png', 'darkgray', 320 - 65, 240, 65, 480);
 Display.statTopLeftImage = new Image('images/statTop.png', 'darkgray', -320, 240, 65, 94, 0.5);
 Display.ammoBarImages = [
-    new Image('images/ammoBar0.png', 'yellow'),
-    new Image('images/ammoBar1.png', 'green'),
-    new Image('images/ammoBar2.png', 'blue')
+    new ImageRegion('images/ammoBar0.png', 'yellow', 0, 0, 1, 1),
+    new ImageRegion('images/ammoBar1.png', 'green', 0, 0, 1, 1),
+    new ImageRegion('images/ammoBar2.png', 'blue', 0, 0, 1, 1)
 ];
 Display.barBaseY = -222;
 Display.barMaxHeight = 171;
@@ -2476,9 +2642,9 @@ Display.blinkPeriod = 300;
 Display.blinkOpacity = 0.5;
 Display.ammoBlinkThreshold = 50;
 Display.healthBlinkThreshold = Player.maxHealth * 0.3;
-Display.healthBarImage = new Image('images/healthBar.png', 'red', 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, 171);
-Display.shieldBarImage = new Image('images/shieldBar.png', 'blue', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
-Display.superShieldBarImage = new Image('images/superShieldBar.png', 'yellow', -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.healthBarImage = new ImageRegion('images/healthBar.png', 'red', 0, 0, 1, 1, 299 - 24, Display.barBaseY + Display.barMaxHeight, 24, Display.barMaxHeight);
+Display.shieldBarImage = new ImageRegion('images/shieldBar.png', 'blue', 0, 0, 1, 1, -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
+Display.superShieldBarImage = new ImageRegion('images/superShieldBar.png', 'yellow', 0, 0, 1, 1, -299, Display.barBaseY + Display.barMaxHeight, 24, 0);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.update = function (ms) {
@@ -2494,25 +2660,20 @@ Display.prototype.update = function (ms) {
         var count = player.ammo.length;
         for (var i = 0; i < count; i++) {
             this.ammo[i].height = 1.5 * player.ammo[i];
+            this.ammo[i].sheight = player.ammo[i] / PowerUp.ammo;
             this.ammo[i].opacity = (this.blink || player.ammo[i] > Display.ammoBlinkThreshold) ? 1 : Display.blinkOpacity;
         }
 
         // Update health
-        var height = Math.max(0, player.health / Player.maxHealth * Display.barMaxHeight);
-        this.healthBar.height = height;
-        this.healthBar.y = Display.barBaseY + height;
+        this.updateBar(this.healthBar, player.health / Player.maxHealth);
         this.healthBar.opacity = (this.blink || player.shields > 0 || player.health > Display.healthBlinkThreshold) ? 1 : Display.blinkOpacity;
 
         // Update shields
-        height = Math.min(Display.barMaxHeight, Math.max(0, player.shields / Player.maxShields * Display.barMaxHeight));
-        this.shieldBar.height = height;
-        this.superShieldBar.height = height;
-        this.shieldBar.y = Display.barBaseY + height;
-        this.superShieldBar.y = this.shieldBar.y;
-        this.superShieldBar.opacity = Math.max(0, (player.shields - Player.maxShields) / Player.maxShields);
+        this.updateBar(this.shieldBar, player.shields / Player.maxShields);
+        this.updateBar(this.superShieldBar, (player.shields - Player.maxShields) / Player.maxShields);
     } else {
-        this.healthBar.height = 0;
-        this.shieldBar.height = 0;
+        this.healthBar.opacity = 0;
+        this.shieldBar.opacity = 0;
         this.superShieldBar.opacity = 0;
     }
 
@@ -2530,6 +2691,19 @@ Display.prototype.reset = function () {
     this.healthBlink.reset();
     this.overlays.clearChildren();
     this.update(0);
+};
+
+Display.prototype.updateBar = function (bar, fraction) {
+    if (fraction > 0) {
+        height = Math.min(Display.barMaxHeight, fraction * Display.barMaxHeight);
+        bar.y = Display.barBaseY + height;
+        bar.height = height;
+        bar.sy = 1 - (height / Display.barMaxHeight);
+        bar.sheight = 1 - bar.sy;
+        bar.opacity = 1;
+    } else {
+        bar.opacity = 0;
+    }
 };
 
 Display.prototype.addOverlay = function (child) {
@@ -2589,7 +2763,11 @@ GameLayer.prototype.reset = function () {
     this.display.reset();
 };
 
-GameLayer.prototype.start = function () {
+GameLayer.prototype.start = function (levelIndex) {
+    if (levelIndex !== undefined) {
+        this.master.setLevel(levelIndex);
+    }
+
     Radius.pushLayer(this);
 };
 
@@ -2715,9 +2893,33 @@ function MainMenu(loadPromise) {
         Audio.setMuted(text === audioOptions[1]);
     });
 
+    // Allow starting on levels that have been unlocked
+    var levelCount = Levels.levels.length;
+    var maxLevelKey = 'maxLevelUnlocked';
+    var maxLevelIndex = Math.min(levelCount - 1, parseInt(localStorage[maxLevelKey]) || 0);
+    this.levelIndex = 0;
+    var levelOptions = [];
+    for (var i = 0; i < levelCount; i++) {
+        levelOptions.push((i + 1).toString());
+    }
+    var levelChoice = new Choice('Level', levelOptions, 0, maxLevelIndex);
+    levelChoice.choiceChanged.addListener(function (index) {
+        mainMenu.levelIndex = index - 1;
+    });
+
+    // After beating a level, unlock the next one
+    this.gameLayer.master.won.addListener(function (levelIndex, last) {
+        if (!last) {
+            maxLevelIndex++;
+            localStorage[maxLevelKey] = maxLevelIndex;
+            levelChoice.setMaxIndex(maxLevelIndex);
+        }
+    });
+
     var options = [
         new Separator(),
-        new Button('Start New Game', function () { mainMenu.startNewGame(); }),
+        new Button('Start New Game', function () { mainMenu.startNewGame(mainMenu.levelIndex); }),
+        levelChoice,
         new Separator(),
         audioChoice,
     ];
@@ -2730,7 +2932,7 @@ function MainMenu(loadPromise) {
         fullscreenChoice.choiceChanged.addListener(function (text) {
             Radius.setFullscreen(text === fullscreenOptions[1]);
         });
-        options.splice(4, 0, fullscreenChoice);
+        options.splice(5, 0, fullscreenChoice);
     }
 
     // Setup background
@@ -2753,15 +2955,15 @@ function MainMenu(loadPromise) {
 
 MainMenu.prototype = Object.create(FormLayer.prototype);
 
-MainMenu.prototype.startNewGameInternal = function () {
+MainMenu.prototype.startNewGameInternal = function (levelIndex) {
     this.gameLayer.reset();
-    this.gameLayer.start();
+    this.gameLayer.start(levelIndex);
 };
 
-MainMenu.prototype.startNewGame = function () {
+MainMenu.prototype.startNewGame = function (levelIndex) {
     if (this.ready) {
         // Everything's loaded, so just go
-        this.startNewGameInternal();
+        this.startNewGameInternal(levelIndex);
     } else {
         // Everything's not loaded yet, so show a progress bar and try again once everything's loaded
         var mainMenu = this;
@@ -2770,7 +2972,7 @@ MainMenu.prototype.startNewGame = function () {
         loadingLayer.load(this.loadPromise, function () {
             mainMenu.ready = true;
             Radius.popLayer();
-            mainMenu.startNewGameInternal();
+            mainMenu.startNewGameInternal(levelIndex);
         });
     }
 };
@@ -2809,6 +3011,7 @@ window.addEventListener('DOMContentLoaded', function () {
             'images/enemyExplosion.png',
             'images/gnat.png',
             'images/groundCircuit.png',
+            'images/groundPCB.png',
             'images/healthBar.png',
             'images/omni.png',
             'images/omniExplosion.png',

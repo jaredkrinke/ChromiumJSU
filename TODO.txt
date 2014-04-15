@@ -1,8 +1,7 @@
-﻿For beta 3:
-Add level 4
-Allow the player to unlock/start on subsequent levels?
-Retargeting for last boss gnats?
-
-For release candidate:
+﻿For release candidate:
 Handle loading errors
 Add scoring?
+Optimizations
+Update to latest Radius Engine
+Create gameplay video?
+Better sound effects?
