@@ -871,6 +871,87 @@ function MouseSerializer(canvas) {
     };
 }
 
+var TouchEvent = {
+    start: 1,
+    end: 2,
+    move: 3,
+    cancel: 4
+};
+
+function TouchSerializer(canvas) {
+    var queuedEvents = [];
+    var queuedPayloads = [];
+    var disableDefault = function (e) {
+        // Disable the default action since the layer will handle this event
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+    }
+
+    canvas.addEventListener('touchstart', function (e) {
+        disableDefault(e);
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            queuedEvents.push(TouchEvent.start);
+            queuedPayloads.push([touch.clientX, touch.clientY, touch.identifier]);
+        }
+    });
+
+    canvas.addEventListener('touchmove', function (e) {
+        disableDefault(e);
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            queuedEvents.push(TouchEvent.move);
+            queuedPayloads.push([touch.clientX, touch.clientY, touch.identifier]);
+        }
+    });
+
+    canvas.addEventListener('touchend', function (e) {
+        disableDefault(e);
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            queuedEvents.push(TouchEvent.end);
+            queuedPayloads.push([touch.clientX, touch.clientY, touch.identifier]);
+        }
+    });
+
+    canvas.addEventListener('touchcancel', function (e) {
+        disableDefault(e);
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            queuedEvents.push(TouchEvent.cancel);
+            queuedPayloads.push([touch.identifier]);
+        }
+    });
+
+    this.process = function (touched, touchMoved, touchCanceled) {
+        var count = queuedEvents.length;
+        if (count > 0) {
+            for (var i = 0; i < count; i++) {
+                var event = queuedEvents[i];
+                var payload = queuedPayloads[i];
+                switch (event) {
+                    case TouchEvent.start:
+                    case TouchEvent.end:
+                        touched(payload[2], event == TouchEvent.start, payload[0], payload[1]);
+                        break;
+
+                    case TouchEvent.move:
+                        touchMoved(payload[2], payload[0], payload[1]);
+                        break;
+
+                    case TouchEvent.cancel:
+                        touchCanceled(payload[0]);
+                        break;
+                }
+            }
+
+            queuedEvents.length = 0;
+            queuedPayloads.length = 0;
+        }
+    };
+}
+
 function ImageCache() {
     this.cache = {};
 }
@@ -949,6 +1030,7 @@ var RadiusSettings = {
 var Radius = new function () {
     var keySerializer = new KeySerializer();
     var mouseSerializer;
+    var touchSerializer;
     var list = [];
     var canvas;
     var context;
@@ -1051,6 +1133,10 @@ var Radius = new function () {
             var mouseMoved = activeLayer.mouseMoved;
             var mouseOut = activeLayer.mouseOut;
 
+            var touched = activeLayer.touched;
+            var touchMoved = activeLayer.touchMoved;
+            var touchCanceled = activeLayer.touchCanceled;
+
             // TODO: This could be cached and should also share code with the canvas 
             // TODO: The API here is ugly...
             var transform = Transform2D.createIdentity();
@@ -1080,6 +1166,31 @@ var Radius = new function () {
             }, function () {
                 if (mouseOut && activeLayer === list[0]) {
                     activeLayer.mouseOut();
+                }
+            });
+
+            touchSerializer.process(function (identifier, started, globalX, globalY) {
+                if (touched && activeLayer === list[0]) {
+                    var canvasCoordinates = convertToCanvasCoordinates(globalX, globalY);
+                    var canvasX = canvasCoordinates[0];
+                    var canvasY = canvasCoordinates[1];
+                    var localCoordinates = Transform2D.transform(transform, [canvasX, canvasY]);
+                    this.lastMouseCoordinates = localCoordinates;
+                    activeLayer.touched(identifier, started, localCoordinates[0], localCoordinates[1]);
+                }
+            }, function (identifier, globalX, globalY) {
+                if (touchMoved && activeLayer === list[0]) {
+                    // TODO: Combine code with above
+                    var canvasCoordinates = convertToCanvasCoordinates(globalX, globalY);
+                    var canvasX = canvasCoordinates[0];
+                    var canvasY = canvasCoordinates[1];
+                    var localCoordinates = Transform2D.transform(transform, [canvasX, canvasY]);
+                    this.lastMouseCoordinates = localCoordinates;
+                    activeLayer.touchMoved(identifier, localCoordinates[0], localCoordinates[1]);
+                }
+            }, function (identifier) {
+                if (touchCanceled && activeLayer === list[0]) {
+                    activeLayer.touchCanceled(identifier);
                 }
             });
 
@@ -1122,6 +1233,7 @@ var Radius = new function () {
         canvas = targetCanvas;
         context = canvas.getContext('2d');
         mouseSerializer = new MouseSerializer(canvas);
+        touchSerializer = new TouchSerializer(canvas);
 
         // Disable default touch behavior (e.g. pan/bounce) for the canvas
         canvas.setAttribute('style', 'touch-action: none; -ms-touch-action: none;');
