@@ -803,3 +803,7 @@ FormLayer.prototype.mouseMoved = function (x, y) {
 FormLayer.prototype.mouseButtonPressed = function (button, pressed, x, y) {
     return this.form.mouseButtonPressed(button, pressed, x, y);
 };
+
+FormLayer.prototype.touched = function (identifier, pressed, x, y) {
+    return this.form.mouseButtonPressed(MouseButton.primary, pressed, x, y);
+};

@@ -2764,6 +2764,8 @@ function GameLayer() {
         space: GameLayer.prototype.fire,
         z: GameLayer.prototype.fire
     };
+
+    this.activeTouchIdentifier = null;
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
@@ -2824,6 +2826,48 @@ GameLayer.prototype.mouseOut = function () {
     // Stop firing if the mouse left the canvas
     if (this.master.player) {
         this.master.player.setFiring(false);
+    }
+};
+
+// TODO: Some of this code could be unified with the mouse event handlers above
+GameLayer.prototype.touchMoved = function (identifier, x, y) {
+    if (this.activeTouchIdentifier === identifier) {
+        this.master.playerCursor.setPosition(x, y);
+    }
+};
+
+GameLayer.prototype.touched = function (identifier, started, x, y) {
+    if (this.activeTouchIdentifier === null && started) {
+        this.activeTouchIdentifier = identifier;
+    }
+
+    if (this.activeTouchIdentifier === identifier) {
+        if (!started) {
+            this.activeTouchIdentifier = null;
+        }
+
+        if (this.master.done) {
+            // Game is over; exit on any press
+            if (started) {
+                this.stop();
+            }
+        } else {
+            // In game
+            if (this.master.player) {
+                this.master.player.setFiring(started);
+            }
+        }
+    }
+};
+
+GameLayer.prototype.touchCanceled = function (identifier) {
+    if (this.activeTouchIdentifier === identifier) {
+        this.activeTouchIdentifier = null;
+
+        // Stop firing if the touch left the canvas
+        if (this.master.player) {
+            this.master.player.setFiring(false);
+        }
     }
 };
 
