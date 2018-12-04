@@ -18,6 +18,16 @@ Timer.prototype.update = function (ms) {
     }
 };
 
+// Random number generator (currently using Math.random())
+function RandomDefault() {
+}
+
+RandomDefault.prototype.next = function () {
+    return Math.random();
+};
+
+var random = new RandomDefault();
+
 function Message(text, period) {
     Entity.call(this);
     this.timer = 0;
@@ -142,7 +152,7 @@ PowerUp.prototype.update = function (ms) {
     this.y = this.baseY + 9 * Math.sin(this.timer / 20 / 75 * 2 * Math.PI);
 
     // Randomly rotate the shadow to create a shimmering effect
-    this.shadowImage.angle = 2 * Math.PI * Math.random();
+    this.shadowImage.angle = 2 * Math.PI * random.next();
 };
 
 PowerUps = [
@@ -358,7 +368,7 @@ Gun.prototype.setFiring = function (firing) {
 };
 
 Gun.prototype.reload = function () {
-    this.timer += this.period + this.periodRandomMax * Math.random();
+    this.timer += this.period + this.periodRandomMax * random.next();
 };
 
 Gun.prototype.createShot = function () {
@@ -517,7 +527,7 @@ PlayerShields.prototype.flash = function () {
 PlayerShields.prototype.update = function (ms) {
     if (this.opacity > 0) {
         this.opacity = Math.max(0, this.opacity - ms / PlayerShields.shieldFadePeriod * PlayerShields.maxOpacity);
-        this.angle = 2 * Math.PI * Math.random();
+        this.angle = 2 * Math.PI * random.next();
     }
 };
 
@@ -539,12 +549,12 @@ PlayerSuperShields.prototype = Object.create(Entity.prototype);
 PlayerSuperShields.prototype.update = function (ms) {
     this.opacity = Math.max(0, (this.player.shields - Player.maxShields) / Player.maxShields);
     if (this.opacity > 0) {
-        this.angle = 2 * Math.PI * Math.random();
+        this.angle = 2 * Math.PI * random.next();
 
         // Add sparkles
         this.timer += ms;
         while (this.timer >= PlayerSuperShields.sparklePeriod) {
-            var angle = Math.random() * 2 * Math.PI;
+            var angle = random.next() * 2 * Math.PI;
             var distance = PlayerShields.shieldWidth / 2;
             var x = this.player.x + distance * Math.cos(angle);
             var y = this.player.y + distance * Math.sin(angle);
@@ -816,8 +826,8 @@ Enemy.prototype.update = function (ms) {
 };
 
 function Straight(master, x, y) {
-    Enemy.call(this, master, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + Math.random() * 0.0569, 110, 200,
-        [new Gun(master, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * Math.random(), [Straight.chargeImage])],
+    Enemy.call(this, master, x, y, Straight.shipWidth, Straight.shipHeight, 0.065 + random.next() * 0.0569, 110, 200,
+        [new Gun(master, this, 0, -26, 30 * 20, 90 * 20, StraightShot, undefined, 30 * 20 + 90 * 20 * random.next(), [Straight.chargeImage])],
         new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 77, 77, 30 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 50, 50, 30 * 20), 3, 9],
@@ -868,14 +878,14 @@ function Omni(master, x, y) {
         guns.push(new OmniGun(master, this, 0, 0, i * 20));
     }
 
-    Enemy.call(this, master, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * Math.random(), 45, 143, guns, new ExplosionSequence([
+    Enemy.call(this, master, x, y, Omni.shipWidth, Omni.shipHeight, 0.1 + 0.057 * random.next(), 45, 143, guns, new ExplosionSequence([
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20)],
             [new ExplosionTemplate(Enemy.explosionImage, 57, 57, 20 * 20, 3 * 20)],
             [new ExplosionTemplate(Omni.explosionImage, 114, 85, 10 * 20)]
     ]),
     new AudioTemplate([['explosionBig.mp3']]));
 
-    this.movementFactor = Math.random();
+    this.movementFactor = random.next();
     this.lastMoveX = 0;
     this.elements = [Omni.image];
     this.addChild(new Spinner(Omni.spinnerImage, 0, 0, Omni.shipWidth, Omni.shipHeight, -8 / 20 * Math.PI / 180));
@@ -921,7 +931,7 @@ function RayGun(master, x, y) {
         ]));
     this.elements = [RayGun.image];
     this.timer = 0;
-    this.movementFactor = 0.5 + Math.random() / 2;
+    this.movementFactor = 0.5 + random.next() / 2;
     this.lastMoveX = 0;
     this.lastMoveY = 0;
     this.limitY = -640;
@@ -994,7 +1004,7 @@ function Gnat(master, x, y, moveTarget) {
         new AudioTemplate([['explosionBig.mp3']]));
     this.elements = [Gnat.image];
     this.timer = 0;
-    this.randMoveX = 0.5 + 0.5 * Math.random();
+    this.randMoveX = 0.5 + 0.5 * random.next();
     this.vx = 0.2;
     this.vy = 0.1;
     this.moveTarget = moveTarget ? moveTarget : this.target;
@@ -1033,7 +1043,7 @@ Gnat.prototype.updateTargetLocation = function (ms) {
         deltaY = (this.moveTarget.y - this.targetY) / 480 * 16.88;
         randX = this.randMoveX;
     } else {
-        randX = 0.75 + 0.15 * Math.random();
+        randX = 0.75 + 0.15 * random.next();
     }
 
     var s = 3.8;
@@ -1206,8 +1216,8 @@ function createBossExplosion(width, height) {
     explosions.push([new ExplosionTemplate(Enemy.explosionImage, width, width, explosionDuration, i)]);
 
     for (var i = 0; i < explosionDuration; i += explosionFrequency) {
-        var size = (Math.random() / 2 + 0.5) * width;
-        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (Math.random() - 0.5) * width, (Math.random() - 0.5) * height]);
+        var size = (random.next() / 2 + 0.5) * width;
+        explosions.push([new ExplosionTemplate(Enemy.explosionImage, size, size, 20 * 20, i), (random.next() - 0.5) * width, (random.next() - 0.5) * height]);
 
         // Decrease frequency over time
         explosionFrequency *= 1.1;
@@ -1681,9 +1691,9 @@ Level.prototype.addOmniWave = function (start, duration, density) {
     var xRand = 1;
     var frequency = 39 / density * 20;
     var end = start + (duration / 2) + 50 * 20;
-    this.addWave(Omni, start, end, (Math.random() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
+    this.addWave(Omni, start, end, (random.next() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
     end = start + duration;
-    this.addWave(Omni, start + (duration / 2) - 50 * 20, end, (Math.random() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
+    this.addWave(Omni, start + (duration / 2) - 50 * 20, end, (random.next() * 2 - 1) * 227, undefined, frequency, 5 * 20, xRand, undefined);
 
     // And a straight wave
     xRand = 8;
@@ -1695,7 +1705,7 @@ Level.prototype.addStraightArrowWave = function (start, duration, density) {
     // Add a straight arrow wave
     var frequency = 50 / density * 20;
     var end = start + 130 * 20;
-    var c = (Math.random() * 2 - 1) / 22.51 * 640;
+    var c = (random.next() * 2 - 1) / 22.51 * 640;
     this.addWave(Straight, start, end, c, undefined, frequency, 0, 1.6, undefined, Wave.formation.arrow);
 
     // Add two omni waves
@@ -1709,7 +1719,7 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
     // Add omni arrow waves
     var frequency = 25 / density * 20;
     var end = start + 130 * 20;
-    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var c = (random.next() * 2 - 1) * 2 / 22.51 * 640;
     var xRand = 1;
     this.addWave(Omni, start + 50 * 20, start + 150 * 20, c, undefined, frequency, 0, xRand, undefined, Wave.formation.arrow);
 
@@ -1725,10 +1735,10 @@ Level.prototype.addOmniArrowWave = function (start, duration, density) {
 Level.prototype.addMixedGnatWave = function (start, duration, density) {
     var frequency = 1 / density * 20;
     var end = start + 130 * 20;
-    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var c = (random.next() * 2 - 1) * 2 / 22.51 * 640;
     var xRand = 1;
 
-    if (Math.random() > 0.5) {
+    if (random.next() > 0.5) {
         this.addWave(Straight, start + 50 * 20, start + duration, c, undefined, 90 * frequency, 0, xRand);
     } else {
         this.addWave(Omni, start + 50 * 20, start + 130 * 20, c, undefined, 20 * frequency, 0, 1.1, undefined, Wave.formation.arrow);
@@ -1742,7 +1752,7 @@ Level.prototype.addMixedGnatWave = function (start, duration, density) {
 Level.prototype.addGnatWave = function (start, duration, density) {
     // Add omni arrow waves
     var frequency = 1 / density * 20;
-    var c = (Math.random() * 2 - 1) * 2 / 22.51 * 640;
+    var c = (random.next() * 2 - 1) * 2 / 22.51 * 640;
     var xRand = 3;
 
     this.addWave(Gnat, start, start + 35 * 20, c, undefined, 2 * frequency, 0, 3);
@@ -1782,7 +1792,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
         // TODO: Supply random factor to the LevelAction (and eventually the enemy constructor)
         switch (formation) {
             case Wave.formation.none:
-                x = waveX + xJitter * (Math.random() * 2 - 1);
+                x = waveX + xJitter * (random.next() * 2 - 1);
                 break;
 
             case Wave.formation.arrow:
@@ -1793,7 +1803,7 @@ Level.prototype.addWave = function (factory, start, end, waveX, waveY, frequency
         }
 
         this.addEnemy(new LevelAction(factory, t, x, waveY));
-        t += frequency + fJitter * (Math.random() * 2 - 1);
+        t += frequency + fJitter * (random.next() * 2 - 1);
     }
 };
 
@@ -1806,10 +1816,10 @@ Level.prototype.addPowerUps = function (start, duration, firsts) {
     var powerupCount = firsts.length;
     for (var j = 0; j < powerupCount; j++) {
         // Loop through and add the power-up
-        var t = start + firsts[j] + randomModifiers[j] * Math.random();
+        var t = start + firsts[j] + randomModifiers[j] * random.next();
         while (t < start + duration) {
-            this.addPowerUp(new LevelAction(PowerUps[j], t, 227 * (2 * Math.random() - 1), Master.boundY));
-            t += frequencies[j] + (Math.random() - 0.5) * randomModifiers[j] * 2;
+            this.addPowerUp(new LevelAction(PowerUps[j], t, 227 * (2 * random.next() - 1), Master.boundY));
+            t += frequencies[j] + (random.next() - 0.5) * randomModifiers[j] * 2;
         }
     }
 };
@@ -1854,7 +1864,7 @@ Levels.loadLevel1 = function (master) {
     while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
-        var r = Math.random();
+        var r = random.next();
 
         // Pick the type of wave
         var factory;
@@ -1872,10 +1882,10 @@ Levels.loadLevel1 = function (master) {
         });
 
         time += waveDuration;
-        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+        waveDuration = (600 + 100 * (random.next() * 2 - 1)) * 20;
 
         // Put a little delay between waves
-        time += (50 + 50 * Math.random()) * 20;
+        time += (50 + 50 * random.next()) * 20;
     }
 
     // Boss
@@ -1902,7 +1912,7 @@ Levels.loadLevel2 = function (master) {
     while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
-        var r = Math.random();
+        var r = random.next();
 
         // Pick the type of wave
         var factory;
@@ -1928,10 +1938,10 @@ Levels.loadLevel2 = function (master) {
         });
 
         time += waveDuration;
-        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+        waveDuration = (600 + 100 * (random.next() * 2 - 1)) * 20;
 
         // Put a little delay between waves
-        time += (50 + 50 * Math.random()) * 20;
+        time += (50 + 50 * random.next()) * 20;
     }
 
     // Boss
@@ -1958,7 +1968,7 @@ Levels.loadLevel3 = function (master) {
     while (time < totalTime - 1000 * 20) {
         // Scale up the density as time goes on
         var density = (time < 1500 * 20 ? (time + 250 * 20) / (2000 * 20) : 1);
-        var r = Math.random();
+        var r = random.next();
 
         // Pick the type of wave
         var factory;
@@ -1984,10 +1994,10 @@ Levels.loadLevel3 = function (master) {
         });
 
         time += waveDuration;
-        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+        waveDuration = (600 + 100 * (random.next() * 2 - 1)) * 20;
 
         // Put a little delay between waves
-        time += (50 + 50 * Math.random()) * 20;
+        time += (50 + 50 * random.next()) * 20;
     }
 
     // Ray gun starts half way through
@@ -2053,7 +2063,7 @@ Levels.loadLevel4 = function (master) {
             });
         } else {
             // Random waves
-            var r = Math.random();
+            var r = random.next();
             var factory;
             if (waveIndex < 5) {
                 if (r < 0.2) {
@@ -2090,10 +2100,10 @@ Levels.loadLevel4 = function (master) {
         // TODO: Extra power-ups?
 
         time += waveDuration;
-        waveDuration = (600 + 100 * (Math.random() * 2 - 1)) * 20;
+        waveDuration = (600 + 100 * (random.next() * 2 - 1)) * 20;
 
         // Put a little delay between waves
-        time += (50 + 50 * Math.random()) * 20;
+        time += (50 + 50 * random.next()) * 20;
     }
 
     waves.push({
@@ -2376,8 +2386,8 @@ Master.prototype.updateGame = function (ms) {
             enemy.offsetY -= deltaY * massFactor / 2;
 
             // Add explosions
-            var explosionOffsetX = 9 * (Math.random() * 2 - 1);
-            var explosionOffsetY = 9 * (Math.random() * 2 - 1);
+            var explosionOffsetX = 9 * (random.next() * 2 - 1);
+            var explosionOffsetY = 9 * (random.next() * 2 - 1);
 
             Master.collisionExplosionTemplate.instantiate(this.effects, enemy.x + explosionOffsetX, enemy.y + explosionOffsetY);
 
@@ -2501,7 +2511,7 @@ Electricity.prototype.update = function (ms) {
         this.y = -240 + (480 + this.totalHeight) * this.timer / Electricity.period;
 
         // Randomly scroll texture
-        var x = Math.random();
+        var x = random.next();
         var e1 = this.elements[0];
         var e2 = this.elements[1];
 
@@ -2754,6 +2764,8 @@ function GameLayer() {
         space: GameLayer.prototype.fire,
         z: GameLayer.prototype.fire
     };
+
+    this.activeTouchIdentifier = null;
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
@@ -2814,6 +2826,48 @@ GameLayer.prototype.mouseOut = function () {
     // Stop firing if the mouse left the canvas
     if (this.master.player) {
         this.master.player.setFiring(false);
+    }
+};
+
+// TODO: Some of this code could be unified with the mouse event handlers above
+GameLayer.prototype.touchMoved = function (identifier, x, y) {
+    if (this.activeTouchIdentifier === identifier) {
+        this.master.playerCursor.setPosition(x, y);
+    }
+};
+
+GameLayer.prototype.touched = function (identifier, started, x, y) {
+    if (this.activeTouchIdentifier === null && started) {
+        this.activeTouchIdentifier = identifier;
+    }
+
+    if (this.activeTouchIdentifier === identifier) {
+        if (!started) {
+            this.activeTouchIdentifier = null;
+        }
+
+        if (this.master.done) {
+            // Game is over; exit on any press
+            if (started) {
+                this.stop();
+            }
+        } else {
+            // In game
+            if (this.master.player) {
+                this.master.player.setFiring(started);
+            }
+        }
+    }
+};
+
+GameLayer.prototype.touchCanceled = function (identifier) {
+    if (this.activeTouchIdentifier === identifier) {
+        this.activeTouchIdentifier = null;
+
+        // Stop firing if the touch left the canvas
+        if (this.master.player) {
+            this.master.player.setFiring(false);
+        }
     }
 };
 

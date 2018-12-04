@@ -1,7 +1,7 @@
 ﻿For release candidate:
 Handle loading errors
-Add scoring?
 Optimizations
+Add scoring?
 Update to latest Radius Engine
 Create gameplay video?
 Better sound effects?
