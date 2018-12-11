@@ -2773,6 +2773,7 @@ GameLayer.prototype = Object.create(Layer.prototype);
 GameLayer.prototype.reset = function () {
     this.master.reset();
     this.display.reset();
+    this.activeTouchIdentifier = null;
 };
 
 GameLayer.prototype.start = function (levelIndex) {
