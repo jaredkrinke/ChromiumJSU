@@ -827,7 +827,7 @@ function MouseSerializer(canvas) {
     var queuedMousePayloads = [];
     var disableDefault = function (e) {
         // Propagate the event if this window doesn't have focus (this is needed to support keyboard input when hosted within an iframe)
-        var neededForFocus = (document.activeElement && document.activeElement !== window);
+        var neededForFocus = (document.activeElement && document.activeElement !== window && document.activeElement !== document.body);
 
         // Disable the default action since the layer will handle this event
         if (e.preventDefault && !neededForFocus) {
