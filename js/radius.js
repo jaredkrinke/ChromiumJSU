@@ -767,16 +767,23 @@ Ghost.prototype = Object.create(ScriptedEntity.prototype);
 function KeySerializer() {
     var queuedKeyCodes = [];
     var queuedKeyStates = [];
+    var disableDefault = function (e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+    };
 
-    addEventListener('keydown', function (e) {
+    window.addEventListener('keydown', function (e) {
         if (e.keyCode in keyCodeToName) {
+            disableDefault(e);
             queuedKeyCodes.push(e.keyCode);
             queuedKeyStates.push(true);
         }
     }, false);
 
-    addEventListener('keyup', function (e) {
+    window.addEventListener('keyup', function (e) {
         if (e.keyCode in keyCodeToName) {
+            disableDefault(e);
             queuedKeyCodes.push(e.keyCode);
             queuedKeyStates.push(false);
         }
@@ -813,8 +820,11 @@ function MouseSerializer(canvas) {
     var queuedMouseEvents = [];
     var queuedMousePayloads = [];
     var disableDefault = function (e) {
+        // Propagate the event if this window doesn't have focus (this is needed to support keyboard input when hosted within an iframe)
+        var neededForFocus = (document.activeElement && document.activeElement !== window);
+
         // Disable the default action since the layer will handle this event
-        if (e.preventDefault) {
+        if (e.preventDefault && !neededForFocus) {
             e.preventDefault();
         }
     }
@@ -1028,7 +1038,7 @@ var RadiusSettings = {
 };
 
 var Radius = new function () {
-    var keySerializer = new KeySerializer();
+    var keySerializer;
     var mouseSerializer;
     var touchSerializer;
     var list = [];
@@ -1078,6 +1088,8 @@ var Radius = new function () {
 
     this.setFullscreen = function (fullscreen) {
         if (!this.fullscreen && fullscreen) {
+            window.focus();
+
             // Resize the canvas
             this.originalCanvasWidth = canvas.width;
             this.originalCanvasHeight = canvas.height;
@@ -1232,6 +1244,7 @@ var Radius = new function () {
     this.initialize = function (targetCanvas) {
         canvas = targetCanvas;
         context = canvas.getContext('2d');
+        keySerializer = new KeySerializer();
         mouseSerializer = new MouseSerializer(canvas);
         touchSerializer = new TouchSerializer(canvas);
 
