@@ -224,10 +224,16 @@ Audio = {
 
 (function () {
     var key = 'radiusAudioMuted';
-    Audio.muted = localStorage[key] === 'true';
+    Audio.muted = false;
+    try {
+        Audio.muted = localStorage[key] === 'true';
+    } catch (e) {}
+
     Audio.setMuted = function (muted) {
-        localStorage[key] = muted;
         Audio.muted = muted;
+        try {
+            localStorage[key] = muted;
+        } catch (e) {}
     };
 })();
 

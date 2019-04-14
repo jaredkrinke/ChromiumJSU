@@ -2951,7 +2951,12 @@ function MainMenu(loadPromise) {
     // Allow starting on levels that have been unlocked
     var levelCount = Levels.levels.length;
     var maxLevelKey = 'maxLevelUnlocked';
-    var maxLevelIndex = Math.min(levelCount - 1, parseInt(localStorage[maxLevelKey]) || 0);
+    var maxLevelIndex = 0;
+
+    try {
+        maxLevelIndex = Math.min(levelCount - 1, parseInt(localStorage[maxLevelKey]) || 0);
+    } catch (e) {}
+
     this.levelIndex = 0;
     var levelOptions = [];
     for (var i = 0; i < levelCount; i++) {
@@ -2966,7 +2971,11 @@ function MainMenu(loadPromise) {
     this.gameLayer.master.won.addListener(function (levelIndex, last) {
         if (!last) {
             maxLevelIndex++;
-            localStorage[maxLevelKey] = maxLevelIndex;
+
+            try {
+                localStorage[maxLevelKey] = maxLevelIndex;
+            } catch (e) {}
+            
             levelChoice.setMaxIndex(maxLevelIndex);
         }
     });
